@@ -151,12 +151,12 @@ struct PhoneCalibrationRootView: View {
                         GuideStepRow(
                             number: "2",
                             text:
-                                "Keep the phone about 8 to 12 cm from the screen so the patch fills most of the dashed frame."
+                                "Keep the front camera facing the screen and place it directly against the display so the patch fills most of the dashed frame."
                         )
                         GuideStepRow(
                             number: "3",
                             text:
-                                "Stay steady and avoid room reflections, shadows, and tilted angles while sampling."
+                                "Stay steady and turn off nearby ambient lights while sampling."
                         )
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
