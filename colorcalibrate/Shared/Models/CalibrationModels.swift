@@ -1,3 +1,10 @@
+//
+//  CalibrationModels.swift
+//  colorcalibrate
+//
+//  Created by Yukari Kaname on 3/22/26.
+//
+
 import Foundation
 import SwiftUI
 

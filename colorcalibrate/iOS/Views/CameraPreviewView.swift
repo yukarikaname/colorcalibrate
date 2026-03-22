@@ -1,36 +1,41 @@
-#if os(iOS)
-    import AVFoundation
-    import SwiftUI
-    import UIKit
+//
+//  CameraPreviewView.swift
+//  colorcalibrate
+//
+//  Created by Yukari Kaname on 3/22/26.
+//
 
-    struct CameraPreviewView: UIViewRepresentable {
-        let session: AVCaptureSession
+import AVFoundation
+import SwiftUI
+import UIKit
 
-        func makeUIView(context: Context) -> PreviewView {
-            let view = PreviewView()
-            view.previewLayer.session = session
-            return view
-        }
+struct CameraPreviewView: UIViewRepresentable {
+    let session: AVCaptureSession
 
-        func updateUIView(_ uiView: PreviewView, context: Context) {
-            uiView.previewLayer.session = session
-        }
+    func makeUIView(context: Context) -> PreviewView {
+        let view = PreviewView()
+        view.previewLayer.session = session
+        return view
     }
 
-    final class PreviewView: UIView {
-        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
-
-        var previewLayer: AVCaptureVideoPreviewLayer {
-            layer as! AVCaptureVideoPreviewLayer
-        }
-
-        override init(frame: CGRect) {
-            super.init(frame: frame)
-            previewLayer.videoGravity = .resizeAspectFill
-        }
-
-        required init?(coder: NSCoder) {
-            super.init(coder: coder)
-        }
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        uiView.previewLayer.session = session
     }
-#endif
+}
+
+final class PreviewView: UIView {
+    override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+
+    var previewLayer: AVCaptureVideoPreviewLayer {
+        layer as! AVCaptureVideoPreviewLayer
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        previewLayer.videoGravity = .resizeAspectFill
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
+}
