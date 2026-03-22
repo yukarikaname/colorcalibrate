@@ -6,7 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		62ECA0AA7B2D198F3F1AA17C /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C977A15005EFF8517A729A3 /* Cocoa.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		5C977A15005EFF8517A729A3 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		8E3986A63EC1FDCE28C7EB3B /* colorcalibrate-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "colorcalibrate-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B389EBF92F6BA51300663CD6 /* colorcalibrate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = colorcalibrate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -26,14 +32,39 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D76FB9E1EC7A13F75817DCD1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				62ECA0AA7B2D198F3F1AA17C /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0C74C7E18F6C7436898F4A81 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				353010043D5EAA123B366434 /* OS X */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		353010043D5EAA123B366434 /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				5C977A15005EFF8517A729A3 /* Cocoa.framework */,
+			);
+			name = "OS X";
+			sourceTree = "<group>";
+		};
 		B389EBF02F6BA51300663CD6 = {
 			isa = PBXGroup;
 			children = (
 				B389EBFB2F6BA51300663CD6 /* colorcalibrate */,
 				B389EBFA2F6BA51300663CD6 /* Products */,
+				0C74C7E18F6C7436898F4A81 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -41,6 +72,7 @@
 			isa = PBXGroup;
 			children = (
 				B389EBF92F6BA51300663CD6 /* colorcalibrate.app */,
+				8E3986A63EC1FDCE28C7EB3B /* colorcalibrate-macOS.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -64,10 +96,28 @@
 				B389EBFB2F6BA51300663CD6 /* colorcalibrate */,
 			);
 			name = colorcalibrate;
-			packageProductDependencies = (
-			);
 			productName = colorcalibrate;
 			productReference = B389EBF92F6BA51300663CD6 /* colorcalibrate.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C36B4583D981653A58CFDB15 /* colorcalibrate-macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 15D14481F255643B5BD1F41F /* Build configuration list for PBXNativeTarget "colorcalibrate-macOS" */;
+			buildPhases = (
+				8BA2BEE7C43ABC62044E92C7 /* Sources */,
+				D76FB9E1EC7A13F75817DCD1 /* Frameworks */,
+				3D0E17728DAA2428832511A5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B389EBFB2F6BA51300663CD6 /* colorcalibrate */,
+			);
+			name = "colorcalibrate-macOS";
+			productName = "colorcalibrate-macOS";
+			productReference = 8E3986A63EC1FDCE28C7EB3B /* colorcalibrate-macOS.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -100,11 +150,19 @@
 			projectRoot = "";
 			targets = (
 				B389EBF82F6BA51300663CD6 /* colorcalibrate */,
+				C36B4583D981653A58CFDB15 /* colorcalibrate-macOS */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		3D0E17728DAA2428832511A5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B389EBF72F6BA51300663CD6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -115,6 +173,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		8BA2BEE7C43ABC62044E92C7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B389EBF52F6BA51300663CD6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -125,6 +190,35 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		335EE0C6B5EA609C2DA8A751 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = ZK98823LRA;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yukari.colorcalibrate.macos;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 		B389EC022F6BA51700663CD6 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -255,12 +349,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = ZK98823LRA;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "colorcalibrate-iOS-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -287,12 +377,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = ZK98823LRA;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "colorcalibrate-iOS-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -310,9 +396,47 @@
 			};
 			name = Release;
 		};
+		CC53E03E536CFCD24F78A649 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = ZK98823LRA;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yukari.colorcalibrate.macos;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		15D14481F255643B5BD1F41F /* Build configuration list for PBXNativeTarget "colorcalibrate-macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				335EE0C6B5EA609C2DA8A751 /* Release */,
+				CC53E03E536CFCD24F78A649 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		B389EBF42F6BA51300663CD6 /* Build configuration list for PBXProject "colorcalibrate" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
