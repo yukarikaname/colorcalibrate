@@ -24,8 +24,6 @@
 	<array>
 		<string>_clrclb._tcp</string>
 	</array>
-	<key>NSCameraUsageDescription</key>
-	<string>Use the front camera to measure the Mac display during calibration.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Discover and connect to your Mac to exchange calibration samples.</string>
 	<key>NSSensorKitUsageDescription</key>

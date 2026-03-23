@@ -35,7 +35,7 @@ struct PhoneCalibrationRootView: View {
                             .font(.system(size: 34, weight: .bold, design: .rounded))
                             .foregroundStyle(colorScheme == .dark ? .white : .black)
                         Text(
-                            "Hold the iPhone front camera toward the Mac display so the center guide sits over the calibration patch."
+                            "Hold the iPhone toward the Mac display so the center guide sits over the calibration patch."
                         )
                         .multilineTextAlignment(.center)
                         .foregroundStyle(
@@ -63,49 +63,12 @@ struct PhoneCalibrationRootView: View {
                             RoundedRectangle(cornerRadius: 32)
                                 .stroke((colorScheme == .dark ? Color.white : Color.black).opacity(0.14), lineWidth: 1)
                         )
-                    } else if model.camera.cameraAuthorized {
-                        CameraPreviewView(session: model.camera.session)
-                            .frame(height: 330)
-                            .clipShape(RoundedRectangle(cornerRadius: 32))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 32)
-                                    .stroke(
-                                        (colorScheme == .dark ? Color.white : Color.black)
-                                            .opacity(0.14), lineWidth: 1)
-                            }
-                            .overlay {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 20)
-                                        .stroke(
-                                            style: StrokeStyle(lineWidth: 2, dash: [10, 8])
-                                        )
-                                        .foregroundStyle(
-                                            (colorScheme == .dark ? Color.white : Color.black)
-                                                .opacity(0.55)
-                                        )
-                                        .padding(46)
-
-                                    VStack {
-                                        HStack {
-                                            Spacer()
-                                            LiveBadge(
-                                                text: model.camera.isReceivingFrames
-                                                    ? "LIVE" : "WAITING",
-                                                tint: model.camera.isReceivingFrames
-                                                    ? .green : .orange
-                                            )
-                                        }
-                                        Spacer()
-                                    }
-                                    .padding(18)
-                                }
-                            }
                     } else {
                         VStack(spacing: 12) {
-                            Image(systemName: "camera.fill")
+                            Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.system(size: 42))
                             Text(
-                                "Camera access is required on iPhone to read the screen patch."
+                                "Ambient light sensor permission is required for color measurements."
                             )
                             .multilineTextAlignment(.center)
                         }
@@ -116,12 +79,8 @@ struct PhoneCalibrationRootView: View {
 
                     VStack(spacing: 14) {
                         HStack(alignment: .center, spacing: 14) {
-                            let sourceColor = model.ambientSensor.sensorAuthorized
-                            ? model.ambientSensor.latestColor
-                            : model.camera.latestColor
-                        let isLive = model.ambientSensor.sensorAuthorized
-                            ? model.ambientSensor.isReceivingData
-                            : model.camera.isReceivingFrames
+                            let sourceColor = model.ambientSensor.latestColor
+                            let isLive = model.ambientSensor.isReceivingData
 
                         RoundedRectangle(cornerRadius: 18)
                                 .fill(sourceColor.swiftUIColor)
@@ -176,12 +135,12 @@ struct PhoneCalibrationRootView: View {
                         GuideStepRow(
                             number: "1",
                             text:
-                                "Use the front camera side of the iPhone and aim it straight at the center of the patch."
+                                "Aim the iPhone at the center of the patch with the screen as flat as possible."
                         )
                         GuideStepRow(
                             number: "2",
                             text:
-                                "Keep the front camera facing the screen and place it directly against the display so the patch fills most of the dashed frame."
+                                "Keep the device steady and aligned so the sensor receives a stable reference."
                         )
                         GuideStepRow(
                             number: "3",
