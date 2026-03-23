@@ -14,6 +14,7 @@ import UIKit
 final class PhoneCalibrationViewModel {
     var peerSession = PeerCalibrationSession(role: .phoneSensor)
     var camera = CameraMeasurementController()
+    var ambientSensor = AmbientLightSensorController()
     var localNetwork = LocalNetworkPermissionController()
     var currentTarget: CalibrationTarget?
     var statusLine = "Open the Mac app and point the iPhone front camera at the screen."
@@ -28,6 +29,7 @@ final class PhoneCalibrationViewModel {
         guard !started else { return }
         started = true
 
+        ambientSensor.start()
         camera.start()
         localNetwork.requestAccess()
         peerSession.restartDiscovery()
@@ -46,6 +48,7 @@ final class PhoneCalibrationViewModel {
 
     func stop() {
         measurementTask?.cancel()
+        ambientSensor.stop()
         camera.stop()
         localNetwork.stop()
     }
@@ -77,9 +80,10 @@ final class PhoneCalibrationViewModel {
             try? await Task.sleep(for: .milliseconds(900))
             guard let self, !Task.isCancelled else { return }
 
+            let sourceColor = self.ambientSensor.sensorAuthorized ? self.ambientSensor.latestColor : self.camera.latestColor
             let measurement = CalibrationMeasurement(
                 targetID: target.id,
-                measuredColor: camera.latestColor,
+                measuredColor: sourceColor,
                 capturedAt: .now
             )
 

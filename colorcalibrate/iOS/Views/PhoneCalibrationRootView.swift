@@ -42,7 +42,28 @@ struct PhoneCalibrationRootView: View {
                             colorScheme == .dark ? .white.opacity(0.76) : .black.opacity(0.72))
                     }
 
-                    if model.camera.cameraAuthorized {
+                    if model.ambientSensor.sensorAuthorized {
+                        VStack(spacing: 12) {
+                            Text("Ambient Light Sensor")
+                                .font(.title2.weight(.semibold))
+                            Text(String(format: "%.0f lux", model.ambientSensor.latestLux))
+                                .font(.system(size: 54, weight: .bold, design: .rounded))
+                                .foregroundColor(model.ambientSensor.isReceivingData ? .green : .secondary)
+
+                            Text(model.ambientSensor.isReceivingData
+                                    ? "Live ambient light from the built-in sensor."
+                                    : "Waiting for ambient light updates...")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(height: 330)
+                        .frame(maxWidth: .infinity)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 32))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 32)
+                                .stroke((colorScheme == .dark ? Color.white : Color.black).opacity(0.14), lineWidth: 1)
+                        )
+                    } else if model.camera.cameraAuthorized {
                         CameraPreviewView(session: model.camera.session)
                             .frame(height: 330)
                             .clipShape(RoundedRectangle(cornerRadius: 32))
@@ -95,8 +116,15 @@ struct PhoneCalibrationRootView: View {
 
                     VStack(spacing: 14) {
                         HStack(alignment: .center, spacing: 14) {
-                            RoundedRectangle(cornerRadius: 18)
-                                .fill(model.camera.latestColor.swiftUIColor)
+                            let sourceColor = model.ambientSensor.sensorAuthorized
+                            ? model.ambientSensor.latestColor
+                            : model.camera.latestColor
+                        let isLive = model.ambientSensor.sensorAuthorized
+                            ? model.ambientSensor.isReceivingData
+                            : model.camera.isReceivingFrames
+
+                        RoundedRectangle(cornerRadius: 18)
+                                .fill(sourceColor.swiftUIColor)
                                 .frame(width: 72, height: 72)
                                 .overlay {
                                     RoundedRectangle(cornerRadius: 18)
@@ -106,12 +134,14 @@ struct PhoneCalibrationRootView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(model.currentTarget?.title ?? "Waiting For Patch")
                                     .font(.headline)
-                                Text(model.camera.latestColor.description)
+                                Text(sourceColor.description)
                                     .font(.title3.monospacedDigit().weight(.semibold))
                                 Text(
-                                    model.camera.isReceivingFrames
-                                        ? "Live reading from the front camera center area."
-                                        : "Waiting for camera frames..."
+                                    isLive
+                                        ? (model.ambientSensor.sensorAuthorized
+                                            ? "Live reading from the ambient light sensor."
+                                            : "Live reading from the front camera center area.")
+                                        : "Waiting for frames or sensor updates..."
                                 )
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)

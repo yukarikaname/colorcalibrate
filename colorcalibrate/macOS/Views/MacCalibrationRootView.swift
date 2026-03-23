@@ -1,6 +1,6 @@
 //
 //  MacCalibrationRootView.swift
-//  colorcalibrate-macOS
+//  colorcalibrate
 //
 //  Created by Yukari Kaname on 3/22/26.
 //
@@ -176,6 +176,11 @@ struct MacCalibrationRootView: View {
         .sheet(isPresented: $model.showDisplayPreparation) {
             DisplayPreparationSheet(model: model)
         }
+        .background {
+            ScreenTrackingView { screen in
+                model.updateTrackedScreen(screen)
+            }
+        }
         .onAppear {
             reminderDaysText = String(model.store.settings.intervalDays)
         }
@@ -190,6 +195,46 @@ struct MacCalibrationRootView: View {
         let clampedDays = min(max(parsedDays, 7), 730)
         model.updateReminder(days: clampedDays)
         reminderDaysText = String(clampedDays)
+    }
+}
+
+private struct ScreenTrackingView: NSViewRepresentable {
+    let onScreenChange: (NSScreen?) -> Void
+
+    func makeNSView(context: Context) -> ScreenObserverView {
+        let view = ScreenObserverView()
+        view.onScreenChange = onScreenChange
+        return view
+    }
+
+    func updateNSView(_ nsView: ScreenObserverView, context: Context) {
+        nsView.onScreenChange = onScreenChange
+        nsView.reportCurrentScreenIfPossible()
+    }
+}
+
+private final class ScreenObserverView: NSView {
+    var onScreenChange: ((NSScreen?) -> Void)?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        reportCurrentScreenIfPossible()
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        reportCurrentScreenIfPossible()
+    }
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        reportCurrentScreenIfPossible()
+    }
+
+    func reportCurrentScreenIfPossible() {
+        DispatchQueue.main.async { [weak self] in
+            self?.onScreenChange?(self?.window?.screen)
+        }
     }
 }
 
@@ -237,13 +282,57 @@ private struct DisplayPreparationSheet: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Automatic Checks")
                     .font(.headline)
-                StatusPill(label: "Night Shift", value: "Not available via public API")
-                StatusPill(label: "True Tone", value: "Not available via public API")
                 StatusPill(
-                    label: "YCbCr / Limited Range", value: "Not available via public API")
+                    label: "Night Shift",
+                    value: model.displayConditions.snapshot.nightShift.description)
+                StatusPill(
+                    label: "True Tone",
+                    value: model.displayConditions.snapshot.trueTone.description)
+                StatusPill(
+                    label: "Signal",
+                    value: model.displayConditions.snapshot.signal.signalDescription)
+                StatusPill(
+                    label: "Pixel Encoding",
+                    value: model.displayConditions.snapshot.signal.pixelEncoding)
+                StatusPill(
+                    label: "Brightness",
+                    value: model.displayConditions.snapshot.brightnessDescription)
             }
             .padding(18)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24))
+
+            if model.displayConditions.snapshot.signal.ycbcrLikely
+                || model.displayConditions.snapshot.signal.limitedRangeLikely
+                || model.displayConditions.snapshot.nightShift == .enabled
+                || model.displayConditions.snapshot.trueTone == .enabled
+            {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Result Risk")
+                        .font(.headline)
+
+                    if model.displayConditions.snapshot.nightShift == .enabled {
+                        Text("Night Shift is on, so the measured white balance will be skewed warmer.")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if model.displayConditions.snapshot.trueTone == .enabled {
+                        Text("True Tone is on, so the display can keep adapting while you measure.")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if model.displayConditions.snapshot.signal.ycbcrLikely {
+                        Text("The display signal looks like YCbCr instead of RGB, which can distort patch accuracy.")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if model.displayConditions.snapshot.signal.limitedRangeLikely {
+                        Text("The signal also looks limited-range, so dark and bright samples can clip differently.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(18)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24))
+            }
 
             Text(model.unsupportedSettingDetectionNote)
                 .font(.callout)

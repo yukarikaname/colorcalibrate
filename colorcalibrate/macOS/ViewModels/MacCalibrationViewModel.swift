@@ -1,6 +1,6 @@
 //
 //  MacCalibrationViewModel.swift
-//  colorcalibrate-macOS
+//  colorcalibrate
 //
 //  Created by Yukari Kaname on 3/22/26.
 //
@@ -10,6 +10,7 @@ import Foundation
 import Observation
 
 struct DisplayEnvironmentSummary {
+    var displayID: CGDirectDisplayID
     var screenName: String
     var colorSpaceName: String
     var currentEDRHeadroom: Double
@@ -28,15 +29,16 @@ struct DisplayEnvironmentSummary {
         hdrLikelyEnabled ? .hdr : .sdr
     }
 
-    static func current() -> DisplayEnvironmentSummary {
-        let screen = NSScreen.main ?? NSScreen.screens.first
+    static func current(screen: NSScreen? = nil) -> DisplayEnvironmentSummary {
+        let resolvedScreen = screen ?? NSScreen.main ?? NSScreen.screens.first
         return DisplayEnvironmentSummary(
-            screenName: screen?.localizedName ?? "Current Display",
-            colorSpaceName: screen?.colorSpace?.localizedName ?? "Unknown Color Space",
+            displayID: resolvedScreen?.displayID ?? CGMainDisplayID(),
+            screenName: resolvedScreen?.localizedName ?? "Current Display",
+            colorSpaceName: resolvedScreen?.colorSpace?.localizedName ?? "Unknown Color Space",
             currentEDRHeadroom: Double(
-                screen?.maximumExtendedDynamicRangeColorComponentValue ?? 1.0),
+                resolvedScreen?.maximumExtendedDynamicRangeColorComponentValue ?? 1.0),
             potentialEDRHeadroom: Double(
-                screen?.maximumPotentialExtendedDynamicRangeColorComponentValue ?? 1.0)
+                resolvedScreen?.maximumPotentialExtendedDynamicRangeColorComponentValue ?? 1.0)
         )
     }
 }
@@ -47,6 +49,7 @@ final class MacCalibrationViewModel {
     var store = CalibrationStore()
     var peerSession = PeerCalibrationSession(role: .macHost)
     var displayApplier = DisplayCalibrationApplier()
+    var displayConditions = DisplayConditionController()
     var currentTargetIndex: Int?
     var activeTarget: CalibrationTarget?
     var measurements: [CalibrationMeasurement] = []
@@ -59,6 +62,8 @@ final class MacCalibrationViewModel {
 
     @ObservationIgnored
     private var applyConfirmationTask: Task<Void, Never>?
+    @ObservationIgnored
+    private var boostedBrightnessDisplayID: CGDirectDisplayID?
 
     init() {
         peerSession.onMeasurement = { [weak self] measurement in
@@ -81,6 +86,8 @@ final class MacCalibrationViewModel {
 
     func beginCalibrationAfterReview() {
         showDisplayPreparation = false
+        refreshDisplayEnvironment()
+        maximizeMeasurementBrightnessIfAvailable()
         startCalibration()
     }
 
@@ -103,6 +110,12 @@ final class MacCalibrationViewModel {
 
     func refreshDisplayEnvironment() {
         displayEnvironment = .current()
+        displayConditions.refresh(displayID: displayEnvironment.displayID)
+    }
+
+    func updateTrackedScreen(_ screen: NSScreen?) {
+        displayEnvironment = .current(screen: screen)
+        displayConditions.refresh(displayID: displayEnvironment.displayID)
     }
 
     var currentModeTitle: String {
@@ -118,12 +131,14 @@ final class MacCalibrationViewModel {
     }
 
     var unsupportedSettingDetectionNote: String {
-        "Night Shift, True Tone, and YCbCr or limited-range output are not exposed through supported public macOS APIs, so the app cannot auto-detect them reliably."
+        "These checks use a mix of public display APIs and private macOS frameworks. They are intended for internal use and may be unavailable on some Mac or display combinations."
     }
 
     private func startCalibration() {
         measurements = []
-        statusLine = "Running \(currentModeTitle) calibration..."
+        statusLine = brightnessBoostStatusLine(
+            defaultLine: "Running \(currentModeTitle) calibration..."
+        )
         requestTarget(at: 0)
     }
 
@@ -135,7 +150,7 @@ final class MacCalibrationViewModel {
             return
         }
 
-        displayApplier.apply(profile)
+        displayApplier.apply(profile, to: displayEnvironment.displayID)
         if let lastErrorMessage = displayApplier.lastErrorMessage {
             statusLine = lastErrorMessage
         } else {
@@ -148,6 +163,7 @@ final class MacCalibrationViewModel {
     func restoreCurrentDisplayState() {
         cancelApplyConfirmation()
         displayApplier.restoreCurrentSystemDisplayState()
+        restoreMeasurementBrightnessIfNeeded()
         statusLine = "Restored the current macOS display color state."
     }
 
@@ -195,6 +211,7 @@ final class MacCalibrationViewModel {
     private func finishCalibration() {
         currentTargetIndex = nil
         activeTarget = nil
+        restoreMeasurementBrightnessIfNeeded()
 
         guard
             let profile = CalibrationProfile.from(
@@ -216,6 +233,33 @@ final class MacCalibrationViewModel {
             await RecalibrationScheduler.scheduleReminder(
                 afterDays: store.settings.intervalDays)
         }
+    }
+
+    private func maximizeMeasurementBrightnessIfAvailable() {
+        let displayID = displayEnvironment.displayID
+        displayConditions.maximizeBrightness(for: displayID)
+
+        if displayConditions.snapshot.brightness != nil {
+            boostedBrightnessDisplayID = displayID
+        } else {
+            boostedBrightnessDisplayID = nil
+        }
+    }
+
+    private func restoreMeasurementBrightnessIfNeeded() {
+        guard let displayID = boostedBrightnessDisplayID else { return }
+        displayConditions.restoreBrightness(for: displayID)
+        boostedBrightnessDisplayID = nil
+    }
+
+    private func brightnessBoostStatusLine(defaultLine: String) -> String {
+        guard boostedBrightnessDisplayID == displayEnvironment.displayID,
+            displayConditions.snapshot.brightness != nil
+        else {
+            return defaultLine
+        }
+
+        return "\(defaultLine) Display brightness has been pushed to 100% for measurement accuracy."
     }
 
     private func startApplyConfirmationCountdown() {
@@ -245,5 +289,11 @@ final class MacCalibrationViewModel {
         applyConfirmationTask = nil
         pendingApplyConfirmation = false
         pendingRestoreSeconds = 0
+    }
+}
+
+private extension NSScreen {
+    var displayID: CGDirectDisplayID? {
+        deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
     }
 }

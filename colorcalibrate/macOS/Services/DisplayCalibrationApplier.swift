@@ -1,6 +1,6 @@
 //
 //  DisplayCalibrationApplier.swift
-//  colorcalibrate-macOS
+//  colorcalibrate
 //
 //  Created by Yukari Kaname on 3/22/26.
 //
@@ -16,8 +16,7 @@ final class DisplayCalibrationApplier {
     private(set) var isCalibrationApplied = false
     private(set) var lastErrorMessage: String?
 
-    func apply(_ profile: CalibrationProfile) {
-        let displayID = CGMainDisplayID()
+    func apply(_ profile: CalibrationProfile, to displayID: CGDirectDisplayID) {
         let sampleCount: UInt32 = 256
         let values = buildTransferTable(for: profile, sampleCount: Int(sampleCount))
 

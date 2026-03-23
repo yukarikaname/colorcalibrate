@@ -28,6 +28,20 @@
 	<string>Use the front camera to measure the Mac display during calibration.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Discover and connect to your Mac to exchange calibration samples.</string>
+	<key>NSSensorKitUsageDescription</key>
+	<string>Use ambient light sensor data to improve display calibration results.</string>
+	<key>NSSensorKitPrivacyPolicyURL</key>
+	<string>https://example.com/privacy-policy</string>
+	<key>NSSensorKitUsageDetail</key>
+	<dict>
+		<key>SRSensorUsageAmbientLightSensor</key>
+		<dict>
+			<key>Description</key>
+			<string>Read ambient light levels for calibration reference measurements.</string>
+			<key>Required</key>
+			<true/>
+		</dict>
+	</dict>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

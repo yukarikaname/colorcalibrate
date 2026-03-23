@@ -14,12 +14,14 @@
 		0F9A9D4137B04E9B8D75A001 /* Exceptions for "colorcalibrate" folder in "colorcalibrate" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			platformFiltersByRelativePath = {
+				iOS/Services/AmbientLightSensorController.swift = (ios, );
 				iOS/Services/CameraMeasurementController.swift = (ios, );
 				iOS/Services/LocalNetworkPermissionController.swift = (ios, );
 				iOS/ViewModels/PhoneCalibrationViewModel.swift = (ios, );
 				iOS/Views/CameraPreviewView.swift = (ios, );
 				iOS/Views/PhoneCalibrationRootView.swift = (ios, );
 				macOS/Services/DisplayCalibrationApplier.swift = (macos, );
+				macOS/Services/DisplayConditionController.swift = (macos, );
 				macOS/ViewModels/MacCalibrationViewModel.swift = (macos, );
 				macOS/Views/MacCalibrationRootView.swift = (macos, );
 			};
@@ -149,6 +151,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
+				CODE_SIGN_ENTITLEMENTS = "colorcalibrate/colorcalibrate.entitlements";
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
@@ -213,6 +216,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
+				CODE_SIGN_ENTITLEMENTS = "colorcalibrate/colorcalibrate.entitlements";
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
