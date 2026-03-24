@@ -46,6 +46,24 @@ struct DisplayEnvironmentSummary {
 @MainActor
 @Observable
 final class MacCalibrationViewModel {
+        func updateRecalibrateAlertEnabled(_ enabled: Bool) {
+            store.settings.recalibrateAlertEnabled = enabled
+            // Persist settings
+            if let encoded = try? JSONEncoder().encode(store.settings) {
+                UserDefaults.standard.set(encoded, forKey: "recalibrationSettings")
+            }
+            if enabled {
+                if store.latestProfile != nil {
+                    Task {
+                        await RecalibrationScheduler.scheduleReminder(afterDays: store.settings.intervalDays)
+                    }
+                }
+            } else {
+                Task {
+                    await RecalibrationScheduler.cancelReminder()
+                }
+            }
+        }
     var store = CalibrationStore()
     var peerSession = PeerCalibrationSession(role: .macHost)
     var displayApplier = DisplayCalibrationApplier()

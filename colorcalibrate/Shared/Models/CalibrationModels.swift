@@ -193,8 +193,32 @@ enum PreviewMode: String, Codable {
 
 struct RecalibrationSettings: Codable {
     var intervalDays: Int
+    var recalibrateAlertEnabled: Bool
 
-    static let `default` = RecalibrationSettings(intervalDays: 180)
+    static let `default` = RecalibrationSettings(intervalDays: 180, recalibrateAlertEnabled: false)
+
+    // Codable conformance for backward compatibility
+    enum CodingKeys: String, CodingKey {
+        case intervalDays
+        case recalibrateAlertEnabled
+    }
+
+    init(intervalDays: Int, recalibrateAlertEnabled: Bool = false) {
+        self.intervalDays = intervalDays
+        self.recalibrateAlertEnabled = recalibrateAlertEnabled
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        intervalDays = try container.decode(Int.self, forKey: .intervalDays)
+        recalibrateAlertEnabled = try container.decodeIfPresent(Bool.self, forKey: .recalibrateAlertEnabled) ?? false
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(intervalDays, forKey: .intervalDays)
+        try container.encode(recalibrateAlertEnabled, forKey: .recalibrateAlertEnabled)
+    }
 }
 
 struct SwatchExample: Identifiable {

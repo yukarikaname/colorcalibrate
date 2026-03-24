@@ -10,6 +10,7 @@ import SwiftUI
 struct MacCalibrationRootView: View {
     @State private var model = MacCalibrationViewModel()
     @State private var reminderDaysText = ""
+    @State private var recalibrateAlertEnabled = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -130,26 +131,44 @@ struct MacCalibrationRootView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Recalibration Reminder")
                         .font(.title3.bold())
-                    HStack(alignment: .center, spacing: 12) {
-                        Text("Remind again after")
-                        TextField("180", text: $reminderDaysText)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 90)
-                            .onSubmit {
-                                applyReminderDays()
-                            }
-                        Text("days")
+                    Toggle(isOn: $recalibrateAlertEnabled) {
+                        Text("Alert me to recalibrate")
+                    }
+                    .toggleStyle(.switch)
+                    .padding(.bottom, 6)
+                    .onChange(of: recalibrateAlertEnabled) { _, newValue in
+                        model.updateRecalibrateAlertEnabled(newValue)
+                    }
+                    .onAppear {
+                        recalibrateAlertEnabled = model.store.settings.recalibrateAlertEnabled
                     }
 
-                    Text("Type a value from 7 to 730 days.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if recalibrateAlertEnabled {
+                        HStack(alignment: .center, spacing: 12) {
+                            Text("Remind again after")
+                            TextField("180", text: $reminderDaysText)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 90)
+                                .onSubmit {
+                                    applyReminderDays()
+                                }
+                            Text("days")
+                        }
 
-                    if let nextReminderDate = model.store.nextReminderDate {
-                        Text(
-                            "Next reminder: \(nextReminderDate.formatted(date: .abbreviated, time: .omitted))"
-                        )
-                        .foregroundStyle(.secondary)
+                        Text("Type a value from 7 to 730 days.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        if let nextReminderDate = model.store.nextReminderDate {
+                            Text(
+                                "Next reminder: \(nextReminderDate.formatted(date: .abbreviated, time: .omitted))"
+                            )
+                            .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Text("You will not be alerted to recalibrate.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .padding(20)
