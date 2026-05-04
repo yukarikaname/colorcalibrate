@@ -1,0 +1,13 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fold crease lines -->
+  <line x1="512" y1="196" x2="512" y2="828" stroke="#7aa0be" stroke-width="2.5" stroke-dasharray="6,6" opacity="0.5"/>
+  <line x1="196" y1="512" x2="828" y2="512" stroke="#7aa0be" stroke-width="2.5" stroke-dasharray="6,6" opacity="0.5"/>
+  <line x1="263" y1="263" x2="761" y2="761" stroke="#7aa0be" stroke-width="1.5" stroke-dasharray="4,8" opacity="0.3"/>
+  <line x1="761" y1="263" x2="263" y2="761" stroke="#7aa0be" stroke-width="1.5" stroke-dasharray="4,8" opacity="0.3"/>
+
+  <!-- Panel edge outlines -->
+  <polygon points="512,301 633,196 512,196 391,196" fill="none" stroke="#7aa0be" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="301,512 196,391 196,512 196,633" fill="none" stroke="#7aa0be" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="723,512 828,391 828,512 828,633" fill="none" stroke="#7aa0be" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="512,723 391,828 512,828 633,828" fill="none" stroke="#7aa0be" stroke-width="2" stroke-linejoin="round"/>
+</svg>

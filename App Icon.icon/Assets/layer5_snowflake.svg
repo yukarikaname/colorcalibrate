@@ -1,0 +1,32 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Snowflake centered at 512,512 -->
+  <g stroke="#5a8fb0" stroke-linecap="round" fill="none" opacity="0.85">
+    <!-- 8 axes -->
+    <line x1="512" y1="467" x2="512" y2="557" stroke-width="5"/>
+    <line x1="467" y1="512" x2="557" y2="512" stroke-width="5"/>
+    <line x1="480" y1="480" x2="544" y2="544" stroke-width="5"/>
+    <line x1="544" y1="480" x2="480" y2="544" stroke-width="5"/>
+
+    <!-- Branch tips - up -->
+    <line x1="497" y1="482" x2="512" y2="467" stroke-width="3.5"/>
+    <line x1="527" y1="482" x2="512" y2="467" stroke-width="3.5"/>
+    <!-- Branch tips - down -->
+    <line x1="497" y1="542" x2="512" y2="557" stroke-width="3.5"/>
+    <line x1="527" y1="542" x2="512" y2="557" stroke-width="3.5"/>
+    <!-- Branch tips - left -->
+    <line x1="482" y1="497" x2="467" y2="512" stroke-width="3.5"/>
+    <line x1="482" y1="527" x2="467" y2="512" stroke-width="3.5"/>
+    <!-- Branch tips - right -->
+    <line x1="542" y1="497" x2="557" y2="512" stroke-width="3.5"/>
+    <line x1="542" y1="527" x2="557" y2="512" stroke-width="3.5"/>
+    <!-- Branch tips - diagonals -->
+    <line x1="488" y1="488" x2="480" y2="480" stroke-width="3"/>
+    <line x1="536" y1="488" x2="544" y2="480" stroke-width="3"/>
+    <line x1="488" y1="536" x2="480" y2="544" stroke-width="3"/>
+    <line x1="536" y1="536" x2="544" y2="544" stroke-width="3"/>
+  </g>
+
+  <!-- Center dot -->
+  <circle cx="512" cy="512" r="10" fill="#5a8fb0" opacity="0.9"/>
+  <circle cx="512" cy="512" r="5" fill="#ffffff" opacity="0.95"/>
+</svg>

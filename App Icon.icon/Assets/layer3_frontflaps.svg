@@ -1,0 +1,7 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Front flaps - brightest, closest to viewer -->
+  <polygon points="512,301 633,196 512,196 391,196" fill="#ffffff"/>
+  <polygon points="301,512 196,391 196,512 196,633" fill="#f4f8fc"/>
+  <polygon points="723,512 828,391 828,512 828,633" fill="#f8fafc"/>
+  <polygon points="512,723 391,828 512,828 633,828" fill="#f0f6fc"/>
+</svg>

@@ -1,0 +1,11 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Mid panels - medium tone, unfolding outward -->
+  <polygon points="512,512 263,263 391,196 512,301" fill="#deeaf6"/>
+  <polygon points="512,512 761,263 633,196 512,301" fill="#e8f2fa"/>
+  <polygon points="512,512 263,263 196,391 301,512" fill="#d0e2f4"/>
+  <polygon points="512,512 263,761 196,633 301,512" fill="#c8daf0"/>
+  <polygon points="512,512 761,263 828,391 723,512" fill="#e0ecf8"/>
+  <polygon points="512,512 761,761 828,633 723,512" fill="#d8e8f4"/>
+  <polygon points="512,512 263,761 391,828 512,723" fill="#c0d4ec"/>
+  <polygon points="512,512 761,761 633,828 512,723" fill="#ccdaf0"/>
+</svg>
