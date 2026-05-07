@@ -27,13 +27,15 @@
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Discover and connect to your Mac to exchange calibration samples.</string>
 	<key>NSSensorKitPrivacyPolicyURL</key>
-	<string>https://example.com/privacy-policy</string>
+	<string>https://aliciaworks.com/legal/privacy-policy</string>
+	<key>NSSensorKitUsageDescription</key>
+	<string>ColorCalibrate is a color science research tool that measures ambient lighting conditions to study and improve display color accuracy across devices.</string>
 	<key>NSSensorKitUsageDetail</key>
 	<dict>
 		<key>SRSensorUsageAmbientLightSensor</key>
 		<dict>
 			<key>Description</key>
-			<string>Read ambient light levels for calibration reference measurements.</string>
+			<string>Measures the color temperature, chromaticity, and illuminance of your ambient light to generate calibration reference points for display color correction.</string>
 			<key>Required</key>
 			<true/>
 		</dict>
