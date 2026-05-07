@@ -18,6 +18,8 @@ final class PhoneCalibrationViewModel {
     var currentTarget: CalibrationTarget?
     var statusLine = "Open the Mac app and position the iPhone toward the screen."
     var receivedProfile: CalibrationProfile?
+    var sensorAccuracyPercent: Double = SensorConservativeEstimate.estimatedAccuracyPercent
+    var sensorNoiseLevel: Double = SensorConservativeEstimate.chromaticityError
 
     @ObservationIgnored
     private var measurementTask: Task<Void, Never>?
@@ -41,6 +43,12 @@ final class PhoneCalibrationViewModel {
             self?.receivedProfile = profile
             self?.statusLine =
                 "Calibration finished on the Mac. You can compare the saved display calibration there."
+        }
+
+        peerSession.onDisconnect = { [weak self] in
+            self?.measurementTask?.cancel()
+            self?.currentTarget = nil
+            self?.statusLine = "Connection lost. Retry discovery when the Mac is nearby."
         }
     }
 
@@ -74,13 +82,33 @@ final class PhoneCalibrationViewModel {
         statusLine = target.instruction
 
         measurementTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(900))
-            guard let self, !Task.isCancelled else { return }
+            guard let self else { return }
+
+            // Wait for sensor data to stabilize before sampling.
+            // Collect multiple samples to measure sensor noise.
+            let deadline = Date().addingTimeInterval(5)
+            while !Task.isCancelled {
+                let stable = self.ambientSensor.colorStability > 0.95
+                let cool = !self.ambientSensor.isThermallyThrottled
+
+                if stable && cool { break }
+                if Date() > deadline { break }
+
+                self.statusLine = "\(target.instruction) (stabilizing: \(Int(self.ambientSensor.colorStability * 100))%)"
+                try? await Task.sleep(for: .milliseconds(250))
+            }
+
+            guard !Task.isCancelled else { return }
+            self.sensorAccuracyPercent = SensorConservativeEstimate.estimatedAccuracyPercent
+            self.sensorNoiseLevel = SensorConservativeEstimate.chromaticityError
 
             let measurement = CalibrationMeasurement(
                 targetID: target.id,
                 measuredColor: self.ambientSensor.latestColor,
-                capturedAt: .now
+                capturedAt: .now,
+                sensorAccuracy: self.sensorAccuracyPercent,
+                sensorNoiseLevel: self.sensorNoiseLevel,
+                colorStability: self.ambientSensor.colorStability
             )
 
             peerSession.sendMeasurement(measurement)

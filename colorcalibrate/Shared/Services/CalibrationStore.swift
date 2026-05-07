@@ -75,11 +75,12 @@ final class CalibrationStore {
     }
 }
 
-enum RecalibrationScheduler {
-        static func cancelReminder() async {
-            let center = UNUserNotificationCenter.current()
-            center.removePendingNotificationRequests(withIdentifiers: ["recalibration-reminder"])
-        }
+struct RecalibrationScheduler {
+    static func cancelReminder() async {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: ["recalibration-reminder"])
+    }
+
     static func requestAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in
         }

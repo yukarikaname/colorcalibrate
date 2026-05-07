@@ -121,10 +121,19 @@ final class LocalNetworkPermissionController {
             listener.start(queue: .main)
             state = .granted
 
+            // Auto-stop probes after a delay to free network resources
+            // once permission has been established.
             readinessTask = Task { @MainActor in
-                try? await Task.sleep(for: .seconds(2))
+                try? await Task.sleep(for: .seconds(5))
                 guard !Task.isCancelled else { return }
-                if self.state == .requesting { self.state = .granted }
+                if self.state == .granted {
+                    self.browser?.cancel()
+                    self.listener?.cancel()
+                    self.browser = nil
+                    self.listener = nil
+                } else if self.state == .requesting {
+                    self.state = .granted
+                }
             }
         } catch {
             state = .failed("Could not start local network probe.")

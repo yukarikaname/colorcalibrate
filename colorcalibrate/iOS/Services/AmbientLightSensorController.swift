@@ -3,7 +3,8 @@
 //  AmbientLightSensorController.swift
 //  colorcalibrate
 //
-//  Created by GitHub Copilot on 3/23/26.
+//  Uses the ambient light sensor's chromaticity (CIE xy) + lux to produce
+//  real color readings instead of grayscale-only values.
 //
 
 import Foundation
@@ -19,6 +20,12 @@ final class AmbientLightSensorController: NSObject {
     private(set) var sensorAuthorized = true
     private(set) var isReceivingData = false
 
+    /// Rolling buffer for stability verification (last N measurements).
+    @ObservationIgnored
+    private var recentColors: [RGBColor] = []
+    @ObservationIgnored
+    private let stabilityWindowSize = 6
+
     @ObservationIgnored
     private var reader: SRSensorReader?
 
@@ -27,6 +34,33 @@ final class AmbientLightSensorController: NSObject {
 
     @ObservationIgnored
     private var lastRequestTime: SRAbsoluteTime?
+
+    // MARK: - Temperature monitoring
+    #if canImport(UIKit)
+    private var thermalState: ProcessInfo.ThermalState {
+        ProcessInfo.processInfo.thermalState
+    }
+    var isThermallyThrottled: Bool {
+        thermalState == .serious || thermalState == .critical
+    }
+    #else
+    var isThermallyThrottled: Bool { false }
+    #endif
+
+    var colorStability: Double {
+        guard recentColors.count >= 3 else { return 0 }
+        let lastN = recentColors.suffix(3)
+        let avgR = lastN.map(\.red).reduce(0,+) / Double(lastN.count)
+        let avgG = lastN.map(\.green).reduce(0,+) / Double(lastN.count)
+        let avgB = lastN.map(\.blue).reduce(0,+) / Double(lastN.count)
+        let variance = lastN.map { c in
+            let dr = c.red - avgR
+            let dg = c.green - avgG
+            let db = c.blue - avgB
+            return dr*dr + dg*dg + db*db
+        }.reduce(0,+) / Double(lastN.count)
+        return max(0, 1.0 - variance * 100)
+    }
 
     func start() {
         guard #available(iOS 14.0, *) else {
@@ -54,6 +88,7 @@ final class AmbientLightSensorController: NSObject {
         timer?.cancel()
         timer = nil
         lastRequestTime = nil
+        recentColors.removeAll()
 
         guard #available(iOS 14.0, *), let reader = reader else { return }
         reader.stopRecording()
@@ -111,13 +146,28 @@ final class AmbientLightSensorController: NSObject {
 
     private func update(with sample: SRAmbientLightSample) {
         let luxValue = sample.lux.value
-        let normalized = min(max(luxValue / 5000.0, 0.0), 1.0)
-        let color = RGBColor(red: normalized, green: normalized, blue: normalized)
+        let chromaticity = sample.chromaticity
+
+        // Use CIE xy chromaticity + lux to derive real sRGB color.
+        // Scale Y from lux: typical display white at 8-12 cm yields ~200-800 lux.
+        // Map to a reasonable luminance range for sRGB conversion.
+        let Y = min(max(luxValue / 500.0, 0.0), 1.5)
+        let color = ColorScience.xyYToSRGB(
+            x: Double(chromaticity.x),
+            y: Double(chromaticity.y),
+            Y: Y
+        )
 
         Task { @MainActor in
             self.latestLux = luxValue
             self.latestColor = color
             self.isReceivingData = true
+
+            // Maintain rolling buffer for stability tracking.
+            self.recentColors.append(color)
+            if self.recentColors.count > self.stabilityWindowSize {
+                self.recentColors.removeFirst(self.recentColors.count - self.stabilityWindowSize)
+            }
         }
     }
 }
@@ -157,7 +207,6 @@ extension AmbientLightSensorController: SRSensorReaderDelegate {
         if let sample = result.sample as? SRAmbientLightSample {
             update(with: sample)
         }
-        // Keep fetching until all results processed.
         return true
     }
 

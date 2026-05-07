@@ -293,6 +293,7 @@
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "colorcalibrate-iOS-Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -346,6 +347,7 @@
 				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "colorcalibrate-iOS-Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

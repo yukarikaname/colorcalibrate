@@ -2,16 +2,35 @@
 //  PeerCalibrationSession.swift
 //  colorcalibrate
 //
-//  Created by Yukari Kaname on 3/22/26.
+//  Multipeer connectivity with disconnect callback and thread safety.
 //
 
 import Foundation
-import MultipeerConnectivity
+@preconcurrency import MultipeerConnectivity
 import Observation
 
 #if os(iOS)
-    import UIKit
+import UIKit
 #endif
+
+// MARK: - Helpers
+
+/// A simple mutex wrapper to protect shared mutable state from data races.
+final class Synchronized<T>: @unchecked Sendable {
+    private var _value: T
+    private let lock = NSLock()
+    init(_ value: T) { self._value = value }
+    var value: T { lock.withLock { _value } }
+    func update(_ transform: (inout T) -> Void) { lock.withLock { transform(&_value) } }
+}
+
+/// A sendable box for the session so we can store it safely on nonisolated paths.
+final class SendableBox<T>: @unchecked Sendable {
+    let value: T
+    init(_ value: T) { self.value = value }
+}
+
+// MARK: - Types
 
 enum PeerRole {
     case macHost
@@ -36,15 +55,27 @@ final class PeerCalibrationSession: NSObject {
     var onCalibrationStep: ((Int, CalibrationTarget) -> Void)?
     @ObservationIgnored
     var onCalibrationFinished: ((CalibrationProfile) -> Void)?
+    @ObservationIgnored
+    var onDisconnect: (() -> Void)?
 
     private let serviceType = "clrclb"
     private let role: PeerRole
     private let peerID: MCPeerID
-    @ObservationIgnored nonisolated(unsafe) private let session: MCSession
+
+    /// Thread-safe box so we can access the session from delegate callbacks.
+    @ObservationIgnored
+    private let sessionBox: SendableBox<MCSession>
+
+    private var session: MCSession { sessionBox.value }
+
     @ObservationIgnored
     private var advertiser: MCNearbyServiceAdvertiser?
     @ObservationIgnored
     private var browser: MCNearbyServiceBrowser?
+
+    /// Track previous connection state to detect disconnects.
+    @ObservationIgnored
+    private let wasConnected = Synchronized(false)
 
     init(role: PeerRole) {
         self.role = role
@@ -55,8 +86,9 @@ final class PeerCalibrationSession: NSObject {
             deviceName = UIDevice.current.name
         #endif
         self.peerID = MCPeerID(displayName: deviceName)
-        self.session = MCSession(
+        let session = MCSession(
             peer: peerID, securityIdentity: nil, encryptionPreference: .required)
+        self.sessionBox = SendableBox(session)
         super.init()
         session.delegate = self
         start()
@@ -174,7 +206,9 @@ extension PeerCalibrationSession: MCNearbyServiceAdvertiserDelegate {
         _ advertiser: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peerID: MCPeerID,
         withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void
     ) {
-        invitationHandler(true, session)
+        Task { @MainActor in
+            invitationHandler(true, self.sessionBox.value)
+        }
     }
 
     nonisolated func advertiser(
@@ -192,7 +226,9 @@ extension PeerCalibrationSession: MCNearbyServiceBrowserDelegate {
         withDiscoveryInfo info: [String: String]?
     ) {
         guard info?["role"] == "mac" else { return }
-        browser.invitePeer(peerID, to: session, withContext: nil, timeout: 12)
+        Task { @MainActor in
+            browser.invitePeer(peerID, to: self.sessionBox.value, withContext: nil, timeout: 12)
+        }
     }
 
     nonisolated func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {

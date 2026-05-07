@@ -21,6 +21,12 @@ enum DisplayDynamicRangeMode: String, Codable, Hashable, Sendable, CaseIterable 
     }
 }
 
+enum SensorConservativeEstimate {
+    static let luxErrorPercent: Double = 5.0
+    static let chromaticityError: Double = 0.002
+    static let estimatedAccuracyPercent: Double = 95.0
+}
+
 struct RGBColor: Codable, Hashable, Sendable {
     var red: Double
     var green: Double
@@ -111,6 +117,25 @@ struct CalibrationMeasurement: Codable, Hashable, Sendable {
     let targetID: String
     let measuredColor: RGBColor
     let capturedAt: Date
+    let sensorAccuracy: Double?      // 0-100, conservative estimate
+    let sensorNoiseLevel: Double?    // Conservative chromaticity uncertainty
+    let colorStability: Double?      // 0-1, stability at measurement time
+    
+    init(
+        targetID: String,
+        measuredColor: RGBColor,
+        capturedAt: Date,
+        sensorAccuracy: Double? = nil,
+        sensorNoiseLevel: Double? = nil,
+        colorStability: Double? = nil
+    ) {
+        self.targetID = targetID
+        self.measuredColor = measuredColor
+        self.capturedAt = capturedAt
+        self.sensorAccuracy = sensorAccuracy
+        self.sensorNoiseLevel = sensorNoiseLevel
+        self.colorStability = colorStability
+    }
 }
 
 struct CalibrationProfile: Codable, Hashable, Sendable {
@@ -160,9 +185,33 @@ struct CalibrationProfile: Codable, Hashable, Sendable {
         let greenGain = ((1.0 / max(green.green, 0.05)) * 0.55) + (whiteGainG * 0.45)
         let blueGain = ((1.0 / max(blue.blue, 0.05)) * 0.55) + (whiteGainB * 0.45)
 
-        let redOffset = ((white.green + white.blue) * 0.5 - white.red) * 0.08
-        let greenOffset = ((white.red + white.blue) * 0.5 - white.green) * 0.08
-        let blueOffset = ((white.red + white.green) * 0.5 - white.blue) * 0.08
+        // White‑based offsets (original, carried from earlier logic).
+        let whiteBasedRedOffset = ((white.green + white.blue) * 0.5 - white.red) * 0.08
+        let whiteBasedGreenOffset = ((white.red + white.blue) * 0.5 - white.green) * 0.08
+        let whiteBasedBlueOffset = ((white.red + white.green) * 0.5 - white.blue) * 0.08
+
+        // Incorporate the gray patch measurement when available to improve
+        // neutral balance.  We nudge the offsets so that measured gray, after
+        // applying the gain, lands closer to true neutral (0.5, 0.5, 0.5).
+        let (finalRedOffset, finalGreenOffset, finalBlueOffset): (Double, Double, Double)
+        if let gray = map["gray"] {
+            let grayCorrectedR = (gray.red * redGain + 0.0)  // before offset
+            let grayCorrectedG = (gray.green * greenGain + 0.0)
+            let grayCorrectedB = (gray.blue * blueGain + 0.0)
+
+            let grayBasedR = 0.5 - grayCorrectedR
+            let grayBasedG = 0.5 - grayCorrectedG
+            let grayBasedB = 0.5 - grayCorrectedB
+
+            // Blend white‑based (70%) and gray‑based (30%) for a balanced result.
+            finalRedOffset   = whiteBasedRedOffset * 0.7 + grayBasedR * 0.3
+            finalGreenOffset = whiteBasedGreenOffset * 0.7 + grayBasedG * 0.3
+            finalBlueOffset  = whiteBasedBlueOffset * 0.7 + grayBasedB * 0.3
+        } else {
+            finalRedOffset   = whiteBasedRedOffset
+            finalGreenOffset = whiteBasedGreenOffset
+            finalBlueOffset  = whiteBasedBlueOffset
+        }
 
         return CalibrationProfile(
             name: "\(displayName) \(dynamicRangeMode.suffix)",
@@ -171,9 +220,9 @@ struct CalibrationProfile: Codable, Hashable, Sendable {
             redGain: clampGain(redGain),
             greenGain: clampGain(greenGain),
             blueGain: clampGain(blueGain),
-            redOffset: clampOffset(redOffset),
-            greenOffset: clampOffset(greenOffset),
-            blueOffset: clampOffset(blueOffset)
+            redOffset: clampOffset(finalRedOffset),
+            greenOffset: clampOffset(finalGreenOffset),
+            blueOffset: clampOffset(finalBlueOffset)
         )
     }
 
