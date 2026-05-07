@@ -46,9 +46,24 @@ final class CalibrationStore {
         profiles.max(by: { $0.createdAt < $1.createdAt })
     }
 
-    func profile(for mode: DisplayDynamicRangeMode) -> CalibrationProfile? {
-        profiles
-            .filter { $0.dynamicRangeMode == mode }
+    func profile(
+        for mode: DisplayDynamicRangeMode,
+        displayID: UInt32,
+        colorSpace: DisplayColorSpace
+    ) -> CalibrationProfile? {
+        let exactProfile = profiles
+            .filter { $0.matches(displayID: displayID, colorSpace: colorSpace, dynamicRangeMode: mode) }
+            .max(by: { $0.createdAt < $1.createdAt })
+        if let exactProfile {
+            return exactProfile
+        }
+
+        return profiles
+            .filter {
+                $0.displayID == 0
+                    && $0.colorSpace == .unknownSRGBFallback
+                    && $0.dynamicRangeMode == mode
+            }
             .max(by: { $0.createdAt < $1.createdAt })
     }
 
@@ -58,7 +73,13 @@ final class CalibrationStore {
     }
 
     func save(profile: CalibrationProfile) {
-        profiles.removeAll { $0.dynamicRangeMode == profile.dynamicRangeMode }
+        profiles.removeAll {
+            $0.matches(
+                displayID: profile.displayID,
+                colorSpace: profile.colorSpace,
+                dynamicRangeMode: profile.dynamicRangeMode
+            )
+        }
         profiles.append(profile)
 
         if let encoded = try? JSONEncoder().encode(profiles) {

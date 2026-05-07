@@ -54,20 +54,33 @@ final class DisplayCalibrationApplier {
     ) {
         let denominator = max(sampleCount - 1, 1)
 
+        // Extract diagonal elements of the 3x3 matrix as effective per-channel gains.
+        // A 1D gamma table cannot represent cross-channel corrections, but using the
+        // diagonal ensures the table is at least consistent with the matrix along the
+        // neutral axis. The full 3x3 matrix is applied in software preview via
+        // `previewCorrectedColor`.
+        let matrixGainR = profile.matrix.count == 9 ? profile.matrix[0] : 1.0
+        let matrixGainG = profile.matrix.count == 9 ? profile.matrix[4] : 1.0
+        let matrixGainB = profile.matrix.count == 9 ? profile.matrix[8] : 1.0
+
+        let effectiveGainR = matrixGainR * profile.fallbackRedGain
+        let effectiveGainG = matrixGainG * profile.fallbackGreenGain
+        let effectiveGainB = matrixGainB * profile.fallbackBlueGain
+
         let red = (0..<sampleCount).map { index in
             transformSample(
-                Double(index) / Double(denominator), gain: profile.redGain,
-                offset: profile.redOffset)
+                Double(index) / Double(denominator), gain: effectiveGainR,
+                offset: profile.fallbackRedOffset)
         }
         let green = (0..<sampleCount).map { index in
             transformSample(
-                Double(index) / Double(denominator), gain: profile.greenGain,
-                offset: profile.greenOffset)
+                Double(index) / Double(denominator), gain: effectiveGainG,
+                offset: profile.fallbackGreenOffset)
         }
         let blue = (0..<sampleCount).map { index in
             transformSample(
-                Double(index) / Double(denominator), gain: profile.blueGain,
-                offset: profile.blueOffset)
+                Double(index) / Double(denominator), gain: effectiveGainB,
+                offset: profile.fallbackBlueOffset)
         }
 
         return (red, green, blue)

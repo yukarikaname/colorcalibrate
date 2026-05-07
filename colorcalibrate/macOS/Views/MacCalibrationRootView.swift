@@ -280,7 +280,7 @@ private struct PrecisionReportView: View {
                     Text("Chromaticity:")
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(String(format: "±%.3f", report.sensorNoiseLevel))
+                    Text(String(format: "±%.3f", SensorConservativeEstimate.chromaticityError))
                         .font(.system(.body, design: .monospaced))
                 }
             }

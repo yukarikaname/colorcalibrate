@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		B389EBF92F6BA51300663CD6 /* colorcalibrate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = colorcalibrate.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC0000010000000000000001 /* colorcalibrateTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = colorcalibrateTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -15,10 +16,8 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			platformFiltersByRelativePath = {
 				iOS/Services/AmbientLightSensorController.swift = (ios, );
-				iOS/Services/CameraMeasurementController.swift = (ios, );
 				iOS/Services/LocalNetworkPermissionController.swift = (ios, );
 				iOS/ViewModels/PhoneCalibrationViewModel.swift = (ios, );
-				iOS/Views/CameraPreviewView.swift = (ios, );
 				iOS/Views/PhoneCalibrationRootView.swift = (ios, );
 				macOS/Services/DisplayCalibrationApplier.swift = (macos, );
 				macOS/Services/DisplayConditionController.swift = (macos, );
@@ -38,10 +37,22 @@
 			path = colorcalibrate;
 			sourceTree = "<group>";
 		};
+		CC0000010000000000000002 /* colorcalibrateTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = colorcalibrateTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		B389EBF62F6BA51300663CD6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC0000010000000000000003 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -55,6 +66,7 @@
 			isa = PBXGroup;
 			children = (
 				B389EBFB2F6BA51300663CD6 /* colorcalibrate */,
+				CC0000010000000000000002 /* colorcalibrateTests */,
 				B389EBFA2F6BA51300663CD6 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -63,11 +75,22 @@
 			isa = PBXGroup;
 			children = (
 				B389EBF92F6BA51300663CD6 /* colorcalibrate.app */,
+				CC0000010000000000000001 /* colorcalibrateTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+
+/* Begin PBXContainerItemProxy section */
+		CC0000010000000000000004 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B389EBF12F6BA51300663CD6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B389EBF82F6BA51300663CD6;
+			remoteInfo = colorcalibrate;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXNativeTarget section */
 		B389EBF82F6BA51300663CD6 /* colorcalibrate */ = {
@@ -90,6 +113,27 @@
 			productReference = B389EBF92F6BA51300663CD6 /* colorcalibrate.app */;
 			productType = "com.apple.product-type.application";
 		};
+		CC0000010000000000000005 /* colorcalibrateTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC0000010000000000000006 /* Build configuration list for PBXNativeTarget "colorcalibrateTests" */;
+			buildPhases = (
+				CC0000010000000000000007 /* Sources */,
+				CC0000010000000000000003 /* Frameworks */,
+				CC0000010000000000000008 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CC0000010000000000000009 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CC0000010000000000000002 /* colorcalibrateTests */,
+			);
+			name = colorcalibrateTests;
+			productName = colorcalibrateTests;
+			productReference = CC0000010000000000000001 /* colorcalibrateTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -102,6 +146,10 @@
 				TargetAttributes = {
 					B389EBF82F6BA51300663CD6 = {
 						CreatedOnToolsVersion = 26.3;
+					};
+					CC0000010000000000000005 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = B389EBF82F6BA51300663CD6;
 					};
 				};
 			};
@@ -120,12 +168,20 @@
 			projectRoot = "";
 			targets = (
 				B389EBF82F6BA51300663CD6 /* colorcalibrate */,
+				CC0000010000000000000005 /* colorcalibrateTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		B389EBF72F6BA51300663CD6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC0000010000000000000008 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -142,7 +198,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CC0000010000000000000007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CC0000010000000000000009 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B389EBF82F6BA51300663CD6 /* colorcalibrate */;
+			targetProxy = CC0000010000000000000004 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		B389EC022F6BA51700663CD6 /* Debug */ = {
@@ -390,6 +461,62 @@
 			};
 			name = Release;
 		};
+		CC0000010000000000000010 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZK98823LRA;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yukari.colorcalibrateTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/colorcalibrate.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/colorcalibrate";
+				TEST_TARGET_NAME = colorcalibrate;
+			};
+			name = Debug;
+		};
+		CC0000010000000000000011 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZK98823LRA;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yukari.colorcalibrateTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/colorcalibrate.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/colorcalibrate";
+				TEST_TARGET_NAME = colorcalibrate;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -407,6 +534,15 @@
 			buildConfigurations = (
 				B389EC052F6BA51700663CD6 /* Debug */,
 				B389EC062F6BA51700663CD6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CC0000010000000000000006 /* Build configuration list for PBXNativeTarget "colorcalibrateTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CC0000010000000000000010 /* Debug */,
+				CC0000010000000000000011 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

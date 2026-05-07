@@ -21,11 +21,25 @@ final class AmbientLightSensorController: NSObject {
     private(set) var sensorAuthorized = true
     private(set) var isReceivingData = false
 
+    /// The display color space the Mac is running in. Used to correctly encode
+    /// the measured RGB color for the fallback path (when `measuredXY` is unavailable).
+    var activeColorSpace: DisplayColorSpace = .sRGB
+
     /// Rolling buffer for stability verification (last N measurements).
     @ObservationIgnored
     private var recentColors: [RGBColor] = []
     @ObservationIgnored
+    private var recentXY: [Chromaticity] = []
+    @ObservationIgnored
     private let stabilityWindowSize = 6
+
+    /// Target lux value for a white display patch at 8–12 cm. Used to normalise
+    /// the ambient light sensor's lux reading into a relative luminance scale.
+    private static let referenceLuxForWhite: Double = 500.0
+
+    /// Maximum relative luminance (Y) allowed before clamping. Values above 1.5
+    /// would map to an RGB channel above the sensor's meaningful quantization range.
+    private static let maxRelativeLuminance: Double = 1.5
 
     @ObservationIgnored
     private var reader: SRSensorReader?
@@ -149,16 +163,17 @@ final class AmbientLightSensorController: NSObject {
         let luxValue = sample.lux.value
         let chromaticity = sample.chromaticity
 
-        // Use CIE xy chromaticity + lux to derive real sRGB color.
+        // Use CIE xy chromaticity + lux to derive RGB color in the display's color space.
         // Scale Y from lux: typical display white at 8-12 cm yields ~200-800 lux.
-        // Map to a reasonable luminance range for sRGB conversion.
-        let Y = min(max(luxValue / 500.0, 0.0), 1.5)
+        // Map to a reasonable luminance range for conversion.
+        let Y = min(max(luxValue / Self.referenceLuxForWhite, 0.0), Self.maxRelativeLuminance)
         let x = Double(chromaticity.x)
         let y = Double(chromaticity.y)
-        let color = ColorScience.xyYToSRGB(x: x, y: y, Y: Y)
+        let color = ColorScience.xyYToRGBColor(x: x, y: y, Y: Y, colorSpace: activeColorSpace)
 
         // Store raw chromaticity for device-independent comparisons.
-        self.latestXY = Chromaticity(x: x, y: y, Y: Y)
+        let chrom = Chromaticity(x: x, y: y, Y: Y)
+        self.latestXY = chrom
 
         Task { @MainActor in
             self.latestLux = luxValue
@@ -166,16 +181,29 @@ final class AmbientLightSensorController: NSObject {
             // latestXY already assigned above
             self.isReceivingData = true
 
-            // Maintain rolling buffer for stability tracking.
+            // Maintain rolling buffers for stability tracking and averaging.
             self.recentColors.append(color)
             if self.recentColors.count > self.stabilityWindowSize {
                 self.recentColors.removeFirst(self.recentColors.count - self.stabilityWindowSize)
             }
+            self.recentXY.append(chrom)
+            if self.recentXY.count > self.stabilityWindowSize {
+                self.recentXY.removeFirst(self.recentXY.count - self.stabilityWindowSize)
+            }
         }
+    }
+
+    /// Returns an average of the recent xyY samples (arithmetic mean).
+    func averagedXY() -> Chromaticity? {
+        guard !recentXY.isEmpty else { return nil }
+        var sx = 0.0, sy = 0.0, sY = 0.0
+        for c in recentXY { sx += c.x; sy += c.y; sY += c.Y }
+        let n = Double(recentXY.count)
+        return Chromaticity(x: sx / n, y: sy / n, Y: sY / n)
     }
 }
 
-@available(iOS 14.0, *)
+
 extension AmbientLightSensorController: SRSensorReaderDelegate {
     func sensorReader(_ reader: SRSensorReader, didChange authorizationStatus: SRAuthorizationStatus) {
         Task { @MainActor in

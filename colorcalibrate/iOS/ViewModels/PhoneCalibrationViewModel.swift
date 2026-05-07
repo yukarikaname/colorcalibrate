@@ -18,8 +18,6 @@ final class PhoneCalibrationViewModel {
     var currentTarget: CalibrationTarget?
     var statusLine = "Open the Mac app and position the iPhone toward the screen."
     var receivedProfile: CalibrationProfile?
-    var sensorAccuracyPercent: Double = SensorConservativeEstimate.estimatedAccuracyPercent
-    var sensorNoiseLevel: Double = SensorConservativeEstimate.chromaticityError
 
     @ObservationIgnored
     private var measurementTask: Task<Void, Never>?
@@ -34,8 +32,8 @@ final class PhoneCalibrationViewModel {
         localNetwork.requestAccess()
         peerSession.restartDiscovery()
 
-        peerSession.onCalibrationStep = { [weak self] _, target in
-            self?.handleCalibrationStep(target)
+        peerSession.onCalibrationStep = { [weak self] _, target, colorSpace in
+            self?.handleCalibrationStep(target, colorSpace: colorSpace)
         }
 
         peerSession.onCalibrationFinished = { [weak self] profile in
@@ -76,10 +74,11 @@ final class PhoneCalibrationViewModel {
         return localNetwork.discoveredServices.joined(separator: ", ")
     }
 
-    private func handleCalibrationStep(_ target: CalibrationTarget) {
+    private func handleCalibrationStep(_ target: CalibrationTarget, colorSpace: DisplayColorSpace) {
         measurementTask?.cancel()
         currentTarget = target
         statusLine = target.instruction
+        ambientSensor.activeColorSpace = colorSpace
 
         measurementTask = Task { [weak self] in
             guard let self else { return }
@@ -99,16 +98,12 @@ final class PhoneCalibrationViewModel {
             }
 
             guard !Task.isCancelled else { return }
-            self.sensorAccuracyPercent = SensorConservativeEstimate.estimatedAccuracyPercent
-            self.sensorNoiseLevel = SensorConservativeEstimate.chromaticityError
 
             let measurement = CalibrationMeasurement(
                 targetID: target.id,
-                measuredXY: self.ambientSensor.latestXY,
+                measuredXY: self.ambientSensor.averagedXY(),
                 measuredColor: self.ambientSensor.latestColor,
                 capturedAt: .now,
-                sensorAccuracy: self.sensorAccuracyPercent,
-                sensorNoiseLevel: self.sensorNoiseLevel,
                 colorStability: self.ambientSensor.colorStability
             )
 

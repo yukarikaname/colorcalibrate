@@ -29,15 +29,13 @@ struct PrecisionReport: Equatable {
     let preCalibrationDeltaE: Double  // ΔE before calibration (vs neutral white)
     let postCalibrationDeltaE: Double // ΔE after calibration
     let improvementPercent: Double    // (pre - post) / pre * 100
-    let sensorAccuracyPercent: Double // Conservative estimate for iPhone sensor accuracy
-    let sensorNoiseLevel: Double      // Conservative chromaticity uncertainty
     
     var improvementSummary: String {
         "ΔE \(String(format: "%.2f", preCalibrationDeltaE)) → \(String(format: "%.2f", postCalibrationDeltaE)) (\(String(format: "+%.1f", improvementPercent))%)"
     }
     
     var sensorAccuracySummary: String {
-        "Lux error ±\(String(format: "%.1f", SensorConservativeEstimate.luxErrorPercent))% · Chromaticity ±\(String(format: "%.3f", sensorNoiseLevel))"
+        "Lux error ±\(String(format: "%.1f", SensorConservativeEstimate.luxErrorPercent))% · Chromaticity ±\(String(format: "%.3f", SensorConservativeEstimate.chromaticityError))"
     }
 }
 
@@ -47,6 +45,7 @@ struct DisplayEnvironmentSummary {
     var displayID: CGDirectDisplayID
     var screenName: String
     var colorSpaceName: String
+    var colorSpace: DisplayColorSpace
     var currentEDRHeadroom: Double
     var potentialEDRHeadroom: Double
 
@@ -60,6 +59,7 @@ struct DisplayEnvironmentSummary {
             displayID: resolvedScreen?.displayID ?? CGMainDisplayID(),
             screenName: resolvedScreen?.localizedName ?? "Current Display",
             colorSpaceName: resolvedScreen?.colorSpace?.localizedName ?? "Unknown Color Space",
+            colorSpace: DisplayColorSpace.from(localizedName: resolvedScreen?.colorSpace?.localizedName),
             currentEDRHeadroom: Double(resolvedScreen?.maximumExtendedDynamicRangeColorComponentValue ?? 1.0),
             potentialEDRHeadroom: Double(resolvedScreen?.maximumPotentialExtendedDynamicRangeColorComponentValue ?? 1.0)
         )
@@ -97,20 +97,23 @@ struct CalibrationQualityReport {
     }
 
     static func from(profile: CalibrationProfile, measurements: [CalibrationMeasurement]) -> CalibrationQualityReport? {
-        let map = Dictionary(uniqueKeysWithValues: measurements.map { ($0.targetID, $0.measuredColor) })
+        let measurementByID = Dictionary(uniqueKeysWithValues: measurements.map { ($0.targetID, $0) })
         var deltas: [Double] = []
 
-        for target in CalibrationTarget.sequence {
-            guard let measured = map[target.id] else { continue }
-            // Prefer device-independent xyY comparison when available.
-            var de: Double
-            if let targetXY = target.xyY, let measuredIndex = measurements.firstIndex(where: { $0.targetID == target.id }), let measuredXY = measurements[measuredIndex].measuredXY {
-                let labTarget = ColorScience.xyYToLab(x: targetXY.x, y: targetXY.y, Y: targetXY.Y)
+        for target in CalibrationTarget.sequence(for: displayEnvironment.dynamicRangeMode) {
+            guard let measurement = measurementByID[target.id] else { continue }
+            let targetColor = target.renderedRGBColor(colorSpace: profile.colorSpace)
+            let labTarget = ColorScience.rgbToLab(targetColor, colorSpace: profile.colorSpace)
+            let de: Double
+            if let measuredXY = measurement.measuredXY {
                 let labMeasured = ColorScience.xyYToLab(x: measuredXY.x, y: measuredXY.y, Y: measuredXY.Y)
                 de = ColorScience.deltaE2000(lab1: labTarget, lab2: labMeasured)
             } else {
-                let corrected = target.color.applying(profile: profile)
-                de = ColorScience.deltaE2000(color1: target.color, color2: corrected)
+                de = ColorScience.deltaE2000(
+                    color1: targetColor,
+                    color2: measurement.measuredColor,
+                    colorSpace: profile.colorSpace
+                )
             }
             deltas.append(de)
         }
@@ -124,14 +127,16 @@ struct CalibrationQualityReport {
             if let measuredXY = whiteMeasured.measuredXY {
                 whiteCCT = ColorScience.correlatedColorTemperature(x: measuredXY.x, y: measuredXY.y)
             } else {
-                // Fallback: derive from RGB if xyY not present
-                let sRGB = whiteMeasured.measuredColor
-                let rLin = ColorScience.gammaExpand(sRGB.red)
-                let gLin = ColorScience.gammaExpand(sRGB.green)
-                let bLin = ColorScience.gammaExpand(sRGB.blue)
-                let X = 0.4124564*rLin + 0.3575761*gLin + 0.1804375*bLin
-                let Y = 0.2126729*rLin + 0.7151522*gLin + 0.0721750*bLin
-                let Z = 0.0193339*rLin + 0.1191920*gLin + 0.9503041*bLin
+                let linear = whiteMeasured.measuredColor.linearComponents(colorSpace: profile.colorSpace, dynamicRangeMode: profile.dynamicRangeMode)
+                let xyz = ColorScience.linearRGBToXYZ(
+                    r: linear.r,
+                    g: linear.g,
+                    b: linear.b,
+                    colorSpace: profile.colorSpace
+                )
+                let X = xyz.X
+                let Y = xyz.Y
+                let Z = xyz.Z
                 let sum = X+Y+Z
                 if sum > 0 {
                     let x = X / sum, y = Y / sum
@@ -141,12 +146,18 @@ struct CalibrationQualityReport {
         }
 
         let grayDeltaE = measurements.first(where: { $0.targetID == "gray" }).map { m -> Double in
-            if let measuredXY = m.measuredXY, let targetXY = CalibrationTarget.sequence.first(where: { $0.id == "gray" })?.xyY {
-                let labTarget = ColorScience.xyYToLab(x: targetXY.x, y: targetXY.y, Y: targetXY.Y)
+            let targetColor = CalibrationTarget.sequence(for: displayEnvironment.dynamicRangeMode).first(where: { $0.id == "gray" })?
+                .renderedRGBColor(colorSpace: profile.colorSpace) ?? .neutralGray
+            let labTarget = ColorScience.rgbToLab(targetColor, colorSpace: profile.colorSpace)
+            if let measuredXY = m.measuredXY {
                 let labMeasured = ColorScience.xyYToLab(x: measuredXY.x, y: measuredXY.y, Y: measuredXY.Y)
                 return ColorScience.deltaE2000(lab1: labTarget, lab2: labMeasured)
             } else {
-                return ColorScience.deltaE2000(color1: RGBColor.neutralGray, color2: m.measuredColor)
+                return ColorScience.deltaE2000(
+                    color1: targetColor,
+                    color2: m.measuredColor,
+                    colorSpace: profile.colorSpace
+                )
             }
         }
 
@@ -201,6 +212,8 @@ final class MacCalibrationViewModel {
     @ObservationIgnored private var boostedBrightnessDisplayID: CGDirectDisplayID?
     @ObservationIgnored private var measurementTimeoutTask: Task<Void, Never>?
     @ObservationIgnored private let measurementTimeoutSeconds: TimeInterval = 30
+    @ObservationIgnored private let fullScreenWindow = CalibrationFullScreenWindow()
+    @ObservationIgnored private var trackedScreen: NSScreen?
 
     init() {
         peerSession.onMeasurement = { [weak self] measurement in self?.handleMeasurement(measurement) }
@@ -215,17 +228,35 @@ final class MacCalibrationViewModel {
 
     var progressText: String {
         if let idx = currentTargetIndex {
-            return "Sample \(idx + 1) of \(CalibrationTarget.sequence.count)"
+            return "Sample \(idx + 1) of \(CalibrationTarget.sequence(for: displayEnvironment.dynamicRangeMode).count)"
         }
         return "Ready"
     }
 
     var currentModeTitle: String { displayEnvironment.dynamicRangeMode.title }
-    var currentProfile: CalibrationProfile? { store.profile(for: displayEnvironment.dynamicRangeMode) }
+    var currentProfile: CalibrationProfile? {
+        store.profile(
+            for: displayEnvironment.dynamicRangeMode,
+            displayID: UInt32(displayEnvironment.displayID),
+            colorSpace: displayEnvironment.colorSpace
+        )
+    }
     var currentProfileName: String { currentProfile?.name ?? "No \(currentModeTitle) calibration saved yet" }
 
     var unsupportedSettingDetectionNote: String {
         "These checks use a mix of public display APIs and private macOS frameworks. They are intended for internal use and may be unavailable on some Mac or display combinations."
+    }
+
+    /// True when the display is using YCbCr or limited-range signal, which invalidates calibration.
+    var hasProblematicSignalFormat: Bool {
+        displayConditions.snapshot.signal.ycbcrLikely || displayConditions.snapshot.signal.limitedRangeLikely
+    }
+
+    var signalWarningMessage: String {
+        var issues: [String] = []
+        if displayConditions.snapshot.signal.ycbcrLikely { issues.append("YCbCr encoding") }
+        if displayConditions.snapshot.signal.limitedRangeLikely { issues.append("Limited Range (16-235)") }
+        return "Display signal uses \(issues.joined(separator: " + ")), which alters color values before they reach the panel. Calibration results will be inaccurate. Switch to RGB Full Range (0-255) in System Settings → Displays."
     }
 
     // MARK: - Actions
@@ -233,6 +264,10 @@ final class MacCalibrationViewModel {
     func startCalibrationButtonTapped() {
         guard peerSession.isConnected else { return }
         refreshDisplayEnvironment()
+        if hasProblematicSignalFormat {
+            statusLine = signalWarningMessage
+            return
+        }
         showDisplayPreparation = true
     }
     
@@ -241,6 +276,7 @@ final class MacCalibrationViewModel {
         isMeasuring = false
         currentMeasurementColor = nil
         measurementHistory = []
+        closeFullScreenPatch()
     }
     
     func startMeasurementMode() {
@@ -251,8 +287,8 @@ final class MacCalibrationViewModel {
         statusLine = "Measuring current display color with iPhone sensor..."
         
         // Request a single measurement from the white point target
-        if let whiteTarget = CalibrationTarget.sequence.first(where: { $0.id == "white" }) {
-            peerSession.sendCalibrationStep(index: 0, target: whiteTarget)
+        if let whiteTarget = CalibrationTarget.sequence(for: displayEnvironment.dynamicRangeMode).first(where: { $0.id == "white" }) {
+            peerSession.sendCalibrationStep(index: 0, target: whiteTarget, colorSpace: displayEnvironment.colorSpace)
             startMeasurementTimeout()
         }
     }
@@ -260,6 +296,7 @@ final class MacCalibrationViewModel {
     func stopMeasurementMode() {
         isMeasuring = false
         cancelMeasurementTimeout()
+        closeFullScreenPatch()
         statusLine = "Measurement stopped."
     }
 
@@ -288,20 +325,16 @@ final class MacCalibrationViewModel {
         displayConditions.refresh(displayID: displayEnvironment.displayID)
     }
 
-    /// Compute a display-driven RGB preview for a `CalibrationTarget` using the
-    /// detected display color space (approximate for sRGB or Display P3).
+    /// Compute a display-driven RGB patch for the active display color space.
     func displayRGB(for target: CalibrationTarget) -> RGBColor {
-        if let xy = target.xyY {
-            let csName = displayEnvironment.colorSpaceName.lowercased()
-            let cs: ColorScience.ColorSpace = csName.contains("p3") ? .displayP3 : .sRGB
-            return ColorScience.xyYToRGBColor(x: xy.x, y: xy.y, Y: xy.Y, colorSpace: cs)
-        }
-        return target.color
+        target.renderedRGBColor(colorSpace: displayEnvironment.colorSpace)
     }
 
     func updateTrackedScreen(_ screen: NSScreen?) {
+        trackedScreen = screen
         displayEnvironment = .current(screen: screen)
         displayConditions.refresh(displayID: displayEnvironment.displayID)
+        updateFullScreenPatchIfNeeded()
     }
 
     func applyCalibrationToDisplay() {
@@ -316,7 +349,7 @@ final class MacCalibrationViewModel {
             statusLine = error
         } else {
             startApplyConfirmationCountdown()
-            statusLine = "Applied \(profile.name). Confirm within \(confirmationCountdownSeconds) seconds or it will restore."
+            statusLine = "Applied \(profile.name) using the 1D gamma-table fallback. Confirm within \(confirmationCountdownSeconds) seconds or it will restore."
         }
     }
 
@@ -362,12 +395,13 @@ final class MacCalibrationViewModel {
     }
 
     private func requestTarget(at index: Int) {
-        guard CalibrationTarget.sequence.indices.contains(index) else { return }
+        guard CalibrationTarget.sequence(for: displayEnvironment.dynamicRangeMode).indices.contains(index) else { return }
         currentTargetIndex = index
-        activeTarget = CalibrationTarget.sequence[index]
+        activeTarget = CalibrationTarget.sequence(for: displayEnvironment.dynamicRangeMode)[index]
         if let target = activeTarget {
             statusLine = target.instruction
-            peerSession.sendCalibrationStep(index: index, target: target)
+            updateFullScreenPatchIfNeeded()
+            peerSession.sendCalibrationStep(index: index, target: target, colorSpace: displayEnvironment.colorSpace)
             startMeasurementTimeout()
         }
     }
@@ -380,22 +414,26 @@ final class MacCalibrationViewModel {
             currentMeasurementColor = measurement.measuredColor
             measurementHistory.append(measurement.measuredColor)
             isMeasuring = false
+            closeFullScreenPatch()
             
             if let profile = currentProfile {
-                let corrected = RGBColor(red: 1.0, green: 1.0, blue: 1.0).applying(profile: profile)
-                let preDE = ColorScience.deltaE2000(
-                    color1: RGBColor(red: 1.0, green: 1.0, blue: 1.0),
-                    color2: measurement.measuredColor
-                )
+                let targetWhite = CalibrationTarget.sequence(for: displayEnvironment.dynamicRangeMode).first(where: { $0.id == "white" })?
+                    .renderedRGBColor(colorSpace: profile.colorSpace) ?? .white
+                let corrected = targetWhite.applying(profile: profile)
+                let preDE = deltaEFromMeasurement(measurement, targetColor: targetWhite, colorSpace: profile.colorSpace)
                 let postDE = ColorScience.deltaE2000(
-                    color1: RGBColor(red: 1.0, green: 1.0, blue: 1.0),
-                    color2: corrected
+                    color1: targetWhite,
+                    color2: corrected,
+                    colorSpace: profile.colorSpace
                 )
                 statusLine = "Current: \(String(format: "%.2f", preDE)) ΔE (with profile: \(String(format: "%.2f", postDE)) ΔE)"
             } else {
-                let de = ColorScience.deltaE2000(
-                    color1: RGBColor(red: 1.0, green: 1.0, blue: 1.0),
-                    color2: measurement.measuredColor
+                let targetWhite = CalibrationTarget.sequence(for: displayEnvironment.dynamicRangeMode).first(where: { $0.id == "white" })?
+                    .renderedRGBColor(colorSpace: displayEnvironment.colorSpace) ?? .white
+                let de = deltaEFromMeasurement(
+                    measurement,
+                    targetColor: targetWhite,
+                    colorSpace: displayEnvironment.colorSpace
                 )
                 statusLine = "Measured white point ΔE: \(String(format: "%.2f", de))"
             }
@@ -408,7 +446,7 @@ final class MacCalibrationViewModel {
 
         guard let idx = currentTargetIndex else { return }
         let next = idx + 1
-        if CalibrationTarget.sequence.indices.contains(next) {
+        if CalibrationTarget.sequence(for: displayEnvironment.dynamicRangeMode).indices.contains(next) {
             requestTarget(at: next)
         } else {
             finishCalibration()
@@ -420,6 +458,7 @@ final class MacCalibrationViewModel {
         showFullScreenCalibration = false
         currentTargetIndex = nil
         activeTarget = nil
+        closeFullScreenPatch()
         restoreMeasurementBrightnessIfNeeded()
         statusLine = "iPhone disconnected. Calibration aborted."
     }
@@ -429,12 +468,15 @@ final class MacCalibrationViewModel {
         activeTarget = nil
         cancelMeasurementTimeout()
         showFullScreenCalibration = false
+        closeFullScreenPatch()
         restoreMeasurementBrightnessIfNeeded()
 
         guard let profile = CalibrationProfile.from(
             measurements: measurements,
             dynamicRangeMode: displayEnvironment.dynamicRangeMode,
-            displayName: displayEnvironment.screenName
+            displayID: UInt32(displayEnvironment.displayID),
+            displayName: displayEnvironment.screenName,
+            colorSpace: displayEnvironment.colorSpace
         ) else {
             statusLine = "Calibration data was incomplete. Try another pass."
             return
@@ -462,37 +504,26 @@ final class MacCalibrationViewModel {
         guard let whiteMeasurement = measurements.first(where: { $0.targetID == "white" }) else {
             return nil
         }
-        // Prefer xyY-based ΔE when available
-        var preCalibDE: Double
-        var postCalibDE: Double
-        if let measuredXY = whiteMeasurement.measuredXY, let targetXY = CalibrationTarget.sequence.first(where: { $0.id == "white" })?.xyY {
-            let labTarget = ColorScience.xyYToLab(x: targetXY.x, y: targetXY.y, Y: targetXY.Y)
-            let labMeasured = ColorScience.xyYToLab(x: measuredXY.x, y: measuredXY.y, Y: measuredXY.Y)
-            preCalibDE = ColorScience.deltaE2000(lab1: labTarget, lab2: labMeasured)
-
-            // Post calibration: assume profile maps white target to corrected RGB. Convert corrected RGB to Lab fallback.
-            let postCalibColor = RGBColor(red: 1.0, green: 1.0, blue: 1.0).applying(profile: profile)
-            postCalibDE = ColorScience.deltaE2000(color1: RGBColor(red: 1.0, green: 1.0, blue: 1.0), color2: postCalibColor)
-        } else {
-            preCalibDE = ColorScience.deltaE2000(
-                color1: RGBColor(red: 1.0, green: 1.0, blue: 1.0),
-                color2: whiteMeasurement.measuredColor
-            )
-            let postCalibColor = RGBColor(red: 1.0, green: 1.0, blue: 1.0).applying(profile: profile)
-            postCalibDE = ColorScience.deltaE2000(
-                color1: RGBColor(red: 1.0, green: 1.0, blue: 1.0),
-                color2: postCalibColor
-            )
-        }
+        let targetWhite = CalibrationTarget.sequence(for: displayEnvironment.dynamicRangeMode).first(where: { $0.id == "white" })?
+            .renderedRGBColor(colorSpace: profile.colorSpace) ?? .white
+        let preCalibDE = deltaEFromMeasurement(
+            whiteMeasurement,
+            targetColor: targetWhite,
+            colorSpace: profile.colorSpace
+        )
+        let postCalibColor = targetWhite.applying(profile: profile)
+        let postCalibDE = ColorScience.deltaE2000(
+            color1: targetWhite,
+            color2: postCalibColor,
+            colorSpace: profile.colorSpace
+        )
         
         let improvement = preCalibDE > 0 ? ((preCalibDE - postCalibDE) / preCalibDE) * 100 : 0
         
         return PrecisionReport(
             preCalibrationDeltaE: preCalibDE,
             postCalibrationDeltaE: postCalibDE,
-            improvementPercent: improvement,
-            sensorAccuracyPercent: SensorConservativeEstimate.estimatedAccuracyPercent,
-            sensorNoiseLevel: SensorConservativeEstimate.chromaticityError
+            improvementPercent: improvement
         )
     }
 
@@ -506,6 +537,7 @@ final class MacCalibrationViewModel {
             self.currentTargetIndex = nil
             self.activeTarget = nil
             self.showFullScreenCalibration = false
+            self.closeFullScreenPatch()
             self.restoreMeasurementBrightnessIfNeeded()
             self.statusLine = "Measurement timed out waiting for iPhone response. Check connection."
         }
@@ -514,6 +546,43 @@ final class MacCalibrationViewModel {
     private func cancelMeasurementTimeout() {
         measurementTimeoutTask?.cancel()
         measurementTimeoutTask = nil
+    }
+
+    // MARK: - Full Screen Patch
+
+    private func updateFullScreenPatchIfNeeded() {
+        guard showFullScreenCalibration, let target = activeTarget else {
+            closeFullScreenPatch()
+            return
+        }
+
+        let color = displayRGB(for: target)
+        if fullScreenWindow.isVisible {
+            fullScreenWindow.update(color: color)
+        } else {
+            fullScreenWindow.show(color: color, on: trackedScreen)
+        }
+    }
+
+    private func closeFullScreenPatch() {
+        fullScreenWindow.hide()
+    }
+
+    private func deltaEFromMeasurement(
+        _ measurement: CalibrationMeasurement,
+        targetColor: RGBColor,
+        colorSpace: DisplayColorSpace
+    ) -> Double {
+        let labTarget = ColorScience.rgbToLab(targetColor, colorSpace: colorSpace)
+        if let measuredXY = measurement.measuredXY {
+            let labMeasured = ColorScience.xyYToLab(x: measuredXY.x, y: measuredXY.y, Y: measuredXY.Y)
+            return ColorScience.deltaE2000(lab1: labTarget, lab2: labMeasured)
+        }
+        return ColorScience.deltaE2000(
+            color1: targetColor,
+            color2: measurement.measuredColor,
+            colorSpace: colorSpace
+        )
     }
 
     // MARK: - Brightness

@@ -167,28 +167,31 @@ final class DisplayConditionController {
     }
 
     private func detectSignalState(for displayID: CGDirectDisplayID) -> DisplaySignalState {
-        guard let mode = CGDisplayCopyDisplayMode(displayID),
-            let rawEncoding = mode.pixelEncoding as String?
-        else {
-            return .unavailable
-        }
+        guard let mode = CGDisplayCopyDisplayMode(displayID) else { return .unavailable }
 
-        let normalized = rawEncoding.trimmingCharacters(in: CharacterSet(charactersIn: "'")).lowercased()
-        let ycbcrLikely = normalized.hasPrefix("420") || normalized.hasPrefix("422") || normalized.hasPrefix("444")
-        let limitedRangeLikely = normalized.hasSuffix("v")
+        let pixelEncoding = CGDisplayModeCopyPixelEncoding(mode)
+            .map { String(describing: $0) } ?? "Unknown"
+        let isYCbCr = pixelEncoding.contains("YCbCr") || pixelEncoding.contains("422") || pixelEncoding.contains("420")
 
-        let signalDescription: String
-        if ycbcrLikely {
-            signalDescription = limitedRangeLikely ? "YCbCr Limited" : "YCbCr Full"
-        } else {
-            signalDescription = "RGB"
-        }
+        // Check for limited range via I/O flags — kDisplayModeNativeFlag or
+        // kDisplayModeLimitedRangeFlag are hints. Also treat YCbCr as inherently
+        // limited-range on many consumer displays.
+        let ioFlags = CGDisplayModeGetIOFlags(mode)
+        let limitedRangeFlag: UInt32 = 1 << 7 // kDisplayModeLimitedRangeFlag (not in public headers)
+        let hasLimitedRangeFlag = (ioFlags & limitedRangeFlag) != 0
+        let refreshRate = CGDisplayModeGetRefreshRate(mode)
+
+        var descParts: [String] = []
+        descParts.append(pixelEncoding)
+        descParts.append(String(format: "%.1f Hz", refreshRate))
+        if hasLimitedRangeFlag { descParts.append("Limited") }
+        if isYCbCr { descParts.append("YCbCr") }
 
         return DisplaySignalState(
-            pixelEncoding: rawEncoding,
-            signalDescription: signalDescription,
-            limitedRangeLikely: limitedRangeLikely,
-            ycbcrLikely: ycbcrLikely
+            pixelEncoding: pixelEncoding,
+            signalDescription: descParts.joined(separator: " · "),
+            limitedRangeLikely: hasLimitedRangeFlag || isYCbCr,
+            ycbcrLikely: isYCbCr
         )
     }
 
@@ -250,7 +253,7 @@ final class DisplayConditionController {
             let selector = NSSelectorFromString(selectorName)
             guard object.responds(to: selector),
                 let unmanaged = object.perform(selector),
-                let nestedObject = unmanaged.takeUnretainedValue() as? NSObject
+                let nestedObject = unmanaged.takeRetainedValue() as? NSObject
             else {
                 continue
             }

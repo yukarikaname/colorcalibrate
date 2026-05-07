@@ -38,7 +38,7 @@ enum PeerRole {
 }
 
 enum PeerMessage: Codable {
-    case calibrate(targetIndex: Int, target: CalibrationTarget)
+    case calibrate(targetIndex: Int, target: CalibrationTarget, colorSpace: DisplayColorSpace)
     case measurement(CalibrationMeasurement)
     case calibrationFinished(CalibrationProfile)
 }
@@ -52,7 +52,7 @@ final class PeerCalibrationSession: NSObject {
     @ObservationIgnored
     var onMeasurement: ((CalibrationMeasurement) -> Void)?
     @ObservationIgnored
-    var onCalibrationStep: ((Int, CalibrationTarget) -> Void)?
+    var onCalibrationStep: ((Int, CalibrationTarget, DisplayColorSpace) -> Void)?
     @ObservationIgnored
     var onCalibrationFinished: ((CalibrationProfile) -> Void)?
     @ObservationIgnored
@@ -98,8 +98,8 @@ final class PeerCalibrationSession: NSObject {
         !session.connectedPeers.isEmpty
     }
 
-    func sendCalibrationStep(index: Int, target: CalibrationTarget) {
-        send(.calibrate(targetIndex: index, target: target))
+    func sendCalibrationStep(index: Int, target: CalibrationTarget, colorSpace: DisplayColorSpace) {
+        send(.calibrate(targetIndex: index, target: target, colorSpace: colorSpace))
     }
 
     func sendMeasurement(_ measurement: CalibrationMeasurement) {
@@ -173,8 +173,8 @@ extension PeerCalibrationSession: MCSessionDelegate {
             switch message {
             case .measurement(let measurement):
                 self.onMeasurement?(measurement)
-            case .calibrate(let index, let target):
-                self.onCalibrationStep?(index, target)
+            case .calibrate(let index, let target, let colorSpace):
+                self.onCalibrationStep?(index, target, colorSpace)
             case .calibrationFinished(let profile):
                 self.onCalibrationFinished?(profile)
             }
