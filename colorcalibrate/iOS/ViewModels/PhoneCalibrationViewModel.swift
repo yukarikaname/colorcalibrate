@@ -104,6 +104,7 @@ final class PhoneCalibrationViewModel {
 
             let measurement = CalibrationMeasurement(
                 targetID: target.id,
+                measuredXY: self.ambientSensor.latestXY,
                 measuredColor: self.ambientSensor.latestColor,
                 capturedAt: .now,
                 sensorAccuracy: self.sensorAccuracyPercent,

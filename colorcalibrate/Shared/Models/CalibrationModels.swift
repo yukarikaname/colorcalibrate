@@ -62,12 +62,22 @@ struct RGBColor: Codable, Hashable, Sendable {
     }
 }
 
+struct Chromaticity: Codable, Hashable, Sendable {
+    let x: Double
+    let y: Double
+    let Y: Double
+}
+
 struct CalibrationTarget: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let title: String
     let subtitle: String
     let instruction: String
     let color: RGBColor
+    /// Device-independent target chromaticity (CIE 1931 xyY). If present, used as the
+    /// authoritative target color for device-independent calibration. `Y` is relative
+    /// luminance (unitless; typical white target use 1.0).
+    let xyY: Chromaticity?
 
     static let sequence: [CalibrationTarget] = [
         CalibrationTarget(
@@ -76,7 +86,8 @@ struct CalibrationTarget: Identifiable, Codable, Hashable, Sendable {
             subtitle: "Measure the screen's white point",
             instruction:
                 "Point the iPhone front camera straight at the bright square and hold it about 8 to 12 cm from the screen.",
-            color: .white
+            color: .white,
+            xyY: Chromaticity(x: 0.3127, y: 0.3290, Y: 1.0)
         ),
         CalibrationTarget(
             id: "red",
@@ -84,7 +95,8 @@ struct CalibrationTarget: Identifiable, Codable, Hashable, Sendable {
             subtitle: "Measure red channel strength",
             instruction:
                 "Keep the front camera centered on the red square and hold the same distance and angle.",
-            color: RGBColor(red: 1.0, green: 0.12, blue: 0.12)
+            color: RGBColor(red: 1.0, green: 0.12, blue: 0.12),
+            xyY: Chromaticity(x: 0.680, y: 0.320, Y: 0.5)
         ),
         CalibrationTarget(
             id: "green",
@@ -92,7 +104,8 @@ struct CalibrationTarget: Identifiable, Codable, Hashable, Sendable {
             subtitle: "Measure green channel strength",
             instruction:
                 "Keep the notch or Dynamic Island side facing the screen and centered on the patch.",
-            color: RGBColor(red: 0.12, green: 1.0, blue: 0.18)
+            color: RGBColor(red: 0.12, green: 1.0, blue: 0.18),
+            xyY: Chromaticity(x: 0.265, y: 0.690, Y: 0.5)
         ),
         CalibrationTarget(
             id: "blue",
@@ -100,7 +113,8 @@ struct CalibrationTarget: Identifiable, Codable, Hashable, Sendable {
             subtitle: "Measure blue channel strength",
             instruction:
                 "Stay steady and keep reflections off the front camera while the blue patch is sampled.",
-            color: RGBColor(red: 0.12, green: 0.22, blue: 1.0)
+            color: RGBColor(red: 0.12, green: 0.22, blue: 1.0),
+            xyY: Chromaticity(x: 0.150, y: 0.060, Y: 0.5)
         ),
         CalibrationTarget(
             id: "gray",
@@ -108,7 +122,8 @@ struct CalibrationTarget: Identifiable, Codable, Hashable, Sendable {
             subtitle: "Measure neutral balance",
             instruction:
                 "Keep the iPhone aligned with the screen for one last neutral-balance reading.",
-            color: .neutralGray
+            color: .neutralGray,
+            xyY: Chromaticity(x: 0.3127, y: 0.3290, Y: 0.5)
         ),
     ]
 }
@@ -116,6 +131,8 @@ struct CalibrationTarget: Identifiable, Codable, Hashable, Sendable {
 struct CalibrationMeasurement: Codable, Hashable, Sendable {
     let targetID: String
     let measuredColor: RGBColor
+    /// Measured chromaticity returned by the sensor (if available).
+    let measuredXY: Chromaticity?
     let capturedAt: Date
     let sensorAccuracy: Double?      // 0-100, conservative estimate
     let sensorNoiseLevel: Double?    // Conservative chromaticity uncertainty
@@ -124,6 +141,7 @@ struct CalibrationMeasurement: Codable, Hashable, Sendable {
     init(
         targetID: String,
         measuredColor: RGBColor,
+        measuredXY: Chromaticity? = nil,
         capturedAt: Date,
         sensorAccuracy: Double? = nil,
         sensorNoiseLevel: Double? = nil,
@@ -131,6 +149,7 @@ struct CalibrationMeasurement: Codable, Hashable, Sendable {
     ) {
         self.targetID = targetID
         self.measuredColor = measuredColor
+        self.measuredXY = measuredXY
         self.capturedAt = capturedAt
         self.sensorAccuracy = sensorAccuracy
         self.sensorNoiseLevel = sensorNoiseLevel

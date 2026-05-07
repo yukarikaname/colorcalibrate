@@ -102,8 +102,16 @@ struct CalibrationQualityReport {
 
         for target in CalibrationTarget.sequence {
             guard let measured = map[target.id] else { continue }
-            let corrected = target.color.applying(profile: profile)
-            let de = ColorScience.deltaE2000(color1: target.color, color2: corrected)
+            // Prefer device-independent xyY comparison when available.
+            var de: Double
+            if let targetXY = target.xyY, let measuredIndex = measurements.firstIndex(where: { $0.targetID == target.id }), let measuredXY = measurements[measuredIndex].measuredXY {
+                let labTarget = ColorScience.xyYToLab(x: targetXY.x, y: targetXY.y, Y: targetXY.Y)
+                let labMeasured = ColorScience.xyYToLab(x: measuredXY.x, y: measuredXY.y, Y: measuredXY.Y)
+                de = ColorScience.deltaE2000(lab1: labTarget, lab2: labMeasured)
+            } else {
+                let corrected = target.color.applying(profile: profile)
+                de = ColorScience.deltaE2000(color1: target.color, color2: corrected)
+            }
             deltas.append(de)
         }
 
@@ -112,23 +120,35 @@ struct CalibrationQualityReport {
 
         // Estimate white point CCT from the white measurement
         var whiteCCT: Double? = nil
-        if let whiteMeasured = map["white"] {
-            // Convert RGB to xy approximately via linear sRGB -> XYZ -> xy
-            let sRGB = whiteMeasured
-            let rLin = ColorScience.gammaExpand(sRGB.red)
-            let gLin = ColorScience.gammaExpand(sRGB.green)
-            let bLin = ColorScience.gammaExpand(sRGB.blue)
-            let X = 0.4124564*rLin + 0.3575761*gLin + 0.1804375*bLin
-            let Y = 0.2126729*rLin + 0.7151522*gLin + 0.0721750*bLin
-            let Z = 0.0193339*rLin + 0.1191920*gLin + 0.9503041*bLin
-            let sum = X+Y+Z
-            if sum > 0 {
-                let x = X / sum, y = Y / sum
-                whiteCCT = ColorScience.correlatedColorTemperature(x: x, y: y)
+        if let whiteMeasured = measurements.first(where: { $0.targetID == "white" }) {
+            if let measuredXY = whiteMeasured.measuredXY {
+                whiteCCT = ColorScience.correlatedColorTemperature(x: measuredXY.x, y: measuredXY.y)
+            } else {
+                // Fallback: derive from RGB if xyY not present
+                let sRGB = whiteMeasured.measuredColor
+                let rLin = ColorScience.gammaExpand(sRGB.red)
+                let gLin = ColorScience.gammaExpand(sRGB.green)
+                let bLin = ColorScience.gammaExpand(sRGB.blue)
+                let X = 0.4124564*rLin + 0.3575761*gLin + 0.1804375*bLin
+                let Y = 0.2126729*rLin + 0.7151522*gLin + 0.0721750*bLin
+                let Z = 0.0193339*rLin + 0.1191920*gLin + 0.9503041*bLin
+                let sum = X+Y+Z
+                if sum > 0 {
+                    let x = X / sum, y = Y / sum
+                    whiteCCT = ColorScience.correlatedColorTemperature(x: x, y: y)
+                }
             }
         }
 
-        let grayDeltaE = map["gray"].map { ColorScience.deltaE2000(color1: RGBColor.neutralGray, color2: $0) }
+        let grayDeltaE = measurements.first(where: { $0.targetID == "gray" }).map { m -> Double in
+            if let measuredXY = m.measuredXY, let targetXY = CalibrationTarget.sequence.first(where: { $0.id == "gray" })?.xyY {
+                let labTarget = ColorScience.xyYToLab(x: targetXY.x, y: targetXY.y, Y: targetXY.Y)
+                let labMeasured = ColorScience.xyYToLab(x: measuredXY.x, y: measuredXY.y, Y: measuredXY.Y)
+                return ColorScience.deltaE2000(lab1: labTarget, lab2: labMeasured)
+            } else {
+                return ColorScience.deltaE2000(color1: RGBColor.neutralGray, color2: m.measuredColor)
+            }
+        }
 
         let gains = [profile.redGain, profile.greenGain, profile.blueGain]
         let offsets = [profile.redOffset, profile.greenOffset, profile.blueOffset]
@@ -266,6 +286,17 @@ final class MacCalibrationViewModel {
     func refreshDisplayEnvironment() {
         displayEnvironment = .current()
         displayConditions.refresh(displayID: displayEnvironment.displayID)
+    }
+
+    /// Compute a display-driven RGB preview for a `CalibrationTarget` using the
+    /// detected display color space (approximate for sRGB or Display P3).
+    func displayRGB(for target: CalibrationTarget) -> RGBColor {
+        if let xy = target.xyY {
+            let csName = displayEnvironment.colorSpaceName.lowercased()
+            let cs: ColorScience.ColorSpace = csName.contains("p3") ? .displayP3 : .sRGB
+            return ColorScience.xyYToRGBColor(x: xy.x, y: xy.y, Y: xy.Y, colorSpace: cs)
+        }
+        return target.color
     }
 
     func updateTrackedScreen(_ screen: NSScreen?) {
@@ -431,18 +462,28 @@ final class MacCalibrationViewModel {
         guard let whiteMeasurement = measurements.first(where: { $0.targetID == "white" }) else {
             return nil
         }
-        
-        let preCalibDE = ColorScience.deltaE2000(
-            color1: RGBColor(red: 1.0, green: 1.0, blue: 1.0),
-            color2: whiteMeasurement.measuredColor
-        )
-        
-        // Get post-calibration white measurement (corrected by profile)
-        let postCalibColor = RGBColor(red: 1.0, green: 1.0, blue: 1.0).applying(profile: profile)
-        let postCalibDE = ColorScience.deltaE2000(
-            color1: RGBColor(red: 1.0, green: 1.0, blue: 1.0),
-            color2: postCalibColor
-        )
+        // Prefer xyY-based ΔE when available
+        var preCalibDE: Double
+        var postCalibDE: Double
+        if let measuredXY = whiteMeasurement.measuredXY, let targetXY = CalibrationTarget.sequence.first(where: { $0.id == "white" })?.xyY {
+            let labTarget = ColorScience.xyYToLab(x: targetXY.x, y: targetXY.y, Y: targetXY.Y)
+            let labMeasured = ColorScience.xyYToLab(x: measuredXY.x, y: measuredXY.y, Y: measuredXY.Y)
+            preCalibDE = ColorScience.deltaE2000(lab1: labTarget, lab2: labMeasured)
+
+            // Post calibration: assume profile maps white target to corrected RGB. Convert corrected RGB to Lab fallback.
+            let postCalibColor = RGBColor(red: 1.0, green: 1.0, blue: 1.0).applying(profile: profile)
+            postCalibDE = ColorScience.deltaE2000(color1: RGBColor(red: 1.0, green: 1.0, blue: 1.0), color2: postCalibColor)
+        } else {
+            preCalibDE = ColorScience.deltaE2000(
+                color1: RGBColor(red: 1.0, green: 1.0, blue: 1.0),
+                color2: whiteMeasurement.measuredColor
+            )
+            let postCalibColor = RGBColor(red: 1.0, green: 1.0, blue: 1.0).applying(profile: profile)
+            postCalibDE = ColorScience.deltaE2000(
+                color1: RGBColor(red: 1.0, green: 1.0, blue: 1.0),
+                color2: postCalibColor
+            )
+        }
         
         let improvement = preCalibDE > 0 ? ((preCalibDE - postCalibDE) / preCalibDE) * 100 : 0
         

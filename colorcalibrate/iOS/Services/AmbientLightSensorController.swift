@@ -17,6 +17,7 @@ import SensorKit
 final class AmbientLightSensorController: NSObject {
     private(set) var latestLux: Double = 0.0
     private(set) var latestColor = RGBColor.neutralGray
+    private(set) var latestXY: Chromaticity?
     private(set) var sensorAuthorized = true
     private(set) var isReceivingData = false
 
@@ -152,15 +153,17 @@ final class AmbientLightSensorController: NSObject {
         // Scale Y from lux: typical display white at 8-12 cm yields ~200-800 lux.
         // Map to a reasonable luminance range for sRGB conversion.
         let Y = min(max(luxValue / 500.0, 0.0), 1.5)
-        let color = ColorScience.xyYToSRGB(
-            x: Double(chromaticity.x),
-            y: Double(chromaticity.y),
-            Y: Y
-        )
+        let x = Double(chromaticity.x)
+        let y = Double(chromaticity.y)
+        let color = ColorScience.xyYToSRGB(x: x, y: y, Y: Y)
+
+        // Store raw chromaticity for device-independent comparisons.
+        self.latestXY = Chromaticity(x: x, y: y, Y: Y)
 
         Task { @MainActor in
             self.latestLux = luxValue
             self.latestColor = color
+            // latestXY already assigned above
             self.isReceivingData = true
 
             // Maintain rolling buffer for stability tracking.

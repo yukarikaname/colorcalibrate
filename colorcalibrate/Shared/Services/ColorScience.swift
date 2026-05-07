@@ -35,6 +35,52 @@ enum ColorScience {
         return (r, g, b)
     }
 
+    /// Converts xyY to CIE XYZ triple.
+    static func xyYToXYZ(x: Double, y: Double, Y: Double) -> (X: Double, Y: Double, Z: Double) {
+        guard y > 0 else { return (0, 0, 0) }
+        let X = (x * Y) / y
+        let Z = ((1 - x - y) * Y) / y
+        return (X, Y, Z)
+    }
+
+    /// Converts CIE XYZ to linear RGB for a given (common) display color space.
+    /// Supports sRGB and Display P3 primaries (both D65 white). Falls back to sRGB for unknown spaces.
+    static func xyzToLinearRGB(_ X: Double, _ Y: Double, _ Z: Double, colorSpace: ColorSpace = .sRGB) -> (r: Double, g: Double, b: Double) {
+        switch colorSpace {
+        case .sRGB:
+            // XYZ -> linear sRGB (matrix inverse of sRGB->XYZ)
+            let r =  3.2404542 * X - 1.5371385 * Y - 0.4985314 * Z
+            let g = -0.9692660 * X + 1.8760108 * Y + 0.0415560 * Z
+            let b =  0.0556434 * X - 0.2040259 * Y + 1.0572252 * Z
+            return (r, g, b)
+        case .displayP3:
+            // XYZ -> linear Display P3 (D65) conversion matrix (approximate)
+            let r =  2.493496911941425 * X - 0.9313836179191239 * Y - 0.40271078445071684 * Z
+            let g = -0.8294889695615747 * X + 1.7626640603183463 * Y + 0.023624685841943577 * Z
+            let b =  0.03584583024378447 * X - 0.07617238926804182 * Y + 0.9568845240076872 * Z
+            return (r, g, b)
+        }
+    }
+
+    enum ColorSpace {
+        case sRGB
+        case displayP3
+    }
+
+    /// Full pipeline: xyY → clamped RGBColor for the requested display color space.
+    static func xyYToRGBColor(x: Double, y: Double, Y: Double, colorSpace: ColorSpace = .sRGB) -> RGBColor {
+        let xyz = xyYToXYZ(x: x, y: y, Y: Y)
+        let linear = xyzToLinearRGB(xyz.X, xyz.Y, xyz.Z, colorSpace: colorSpace)
+        let sr = linearToSRGBComponent(linear.r)
+        let sg = linearToSRGBComponent(linear.g)
+        let sb = linearToSRGBComponent(linear.b)
+        return RGBColor(
+            red: max(0, min(1, sr)),
+            green: max(0, min(1, sg)),
+            blue: max(0, min(1, sb))
+        )
+    }
+
     // MARK: - Linear sRGB → sRGB (gamma-corrected)
 
     /// Inverse of linearToSRGBComponent — expands a gamma-compressed sRGB value to linear.
@@ -113,6 +159,12 @@ enum ColorScience {
         let a = 500.0 * (f(X / Xn) - f(Y / Yn))
         let b = 200.0 * (f(Y / Yn) - f(Z / Zn))
         return (L, a, b)
+    }
+
+    /// Converts CIE xyY directly to Lab (assuming D65 normalization used elsewhere).
+    static func xyYToLab(x: Double, y: Double, Y: Double) -> (L: Double, a: Double, b: Double) {
+        let xyz = xyYToXYZ(x: x, y: y, Y: Y)
+        return xyzToLab(X: xyz.X, Y: xyz.Y, Z: xyz.Z)
     }
 
     /// Converts an sRGB color to CIE Lab.

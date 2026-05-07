@@ -154,7 +154,7 @@ private struct TargetDisplayView: View {
             CalibrationHeroCard(
                 title: target.title,
                 subtitle: target.subtitle,
-                color: target.color,
+                color: model.displayRGB(for: target),
                 profile: nil
             )
         } else {
