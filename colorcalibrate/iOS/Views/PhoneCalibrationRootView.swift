@@ -97,10 +97,8 @@ struct PhoneCalibrationRootView: View {
                                     .font(.title3.monospacedDigit().weight(.semibold))
                                 Text(
                                     isLive
-                                        ? (model.ambientSensor.sensorAuthorized
-                                            ? "Live reading from the ambient light sensor."
-                                            : "Live reading from the front camera center area.")
-                                        : "Waiting for frames or sensor updates..."
+                                        ? "Live reading from the ambient light sensor."
+                                        : "Waiting for sensor updates..."
                                 )
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
