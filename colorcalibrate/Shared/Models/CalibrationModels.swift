@@ -10,6 +10,7 @@ import SwiftUI
 
 enum DisplayDynamicRangeMode: String, Codable, Hashable, Sendable, CaseIterable {
     case sdr
+    case edr
     case hdr
 
     var suffix: String {
@@ -17,7 +18,19 @@ enum DisplayDynamicRangeMode: String, Codable, Hashable, Sendable, CaseIterable 
     }
 
     var title: String {
-        self == .hdr ? "HDR" : "SDR"
+        switch self {
+        case .sdr: return "SDR"
+        case .edr: return "EDR"
+        case .hdr: return "HDR"
+        }
+    }
+
+    /// Whether this mode uses extended range (values can exceed 1.0).
+    var isExtendedRange: Bool {
+        switch self {
+        case .sdr: return false
+        case .edr, .hdr: return true
+        }
     }
 }
 
@@ -180,9 +193,9 @@ struct CalibrationTarget: Identifiable, Codable, Hashable, Sendable {
     @available(*, deprecated, message: "Use sequence(for:) instead")
     static let sequence: [CalibrationTarget] = sdrSequence
 
-    func renderedRGBColor(colorSpace: DisplayColorSpace) -> RGBColor {
+    func renderedRGBColor(colorSpace: DisplayColorSpace, dynamicRangeMode: DisplayDynamicRangeMode = .sdr) -> RGBColor {
         guard let xyY else { return color.clamped() }
-        return ColorScience.xyYToRGBColor(x: xyY.x, y: xyY.y, Y: xyY.Y, colorSpace: colorSpace)
+        return ColorScience.xyYToRGBColor(x: xyY.x, y: xyY.y, Y: xyY.Y, colorSpace: colorSpace, dynamicRangeMode: dynamicRangeMode)
     }
 }
 

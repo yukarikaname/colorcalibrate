@@ -105,14 +105,24 @@ enum ColorScience {
         x: Double,
         y: Double,
         Y: Double,
-        colorSpace: DisplayColorSpace = .sRGB
+        colorSpace: DisplayColorSpace = .sRGB,
+        dynamicRangeMode: DisplayDynamicRangeMode = .sdr
     ) -> RGBColor {
         let xyz = xyYToXYZ(x: x, y: y, Y: Y)
         let linear = xyzToLinearRGB(xyz.X, xyz.Y, xyz.Z, colorSpace: colorSpace)
+        let encoded = RGBColor(
+            red: encode(linear.r, colorSpace: colorSpace, dynamicRangeMode: dynamicRangeMode),
+            green: encode(linear.g, colorSpace: colorSpace, dynamicRangeMode: dynamicRangeMode),
+            blue: encode(linear.b, colorSpace: colorSpace, dynamicRangeMode: dynamicRangeMode)
+        )
+        // Only clamp for SDR; extended range modes allow values above 1.0.
+        if dynamicRangeMode.isExtendedRange {
+            return encoded
+        }
         return RGBColor(
-            red: clamped(encode(linear.r, colorSpace: colorSpace)),
-            green: clamped(encode(linear.g, colorSpace: colorSpace)),
-            blue: clamped(encode(linear.b, colorSpace: colorSpace))
+            red: clamped(encoded.red),
+            green: clamped(encoded.green),
+            blue: clamped(encoded.blue)
         )
     }
 
@@ -124,7 +134,8 @@ enum ColorScience {
     // MARK: - Transfer Functions
 
     /// Expands an encoded component to linear light for the selected RGB space and dynamic range.
-    /// For HDR, uses the PQ (ST.2084) inverse EOTF to recover display linear values above 1.0.
+    /// For PQ HDR, uses the ST.2084 inverse EOTF to recover display linear values above 1.0.
+    /// For EDR, uses the same gamma transfer function as SDR but allows values above 1.0.
     static func decode(
         _ value: Double,
         colorSpace: DisplayColorSpace = .sRGB,
@@ -133,6 +144,7 @@ enum ColorScience {
         if dynamicRangeMode == .hdr {
             return pqToLinear(value)
         }
+        // EDR uses the same gamma transfer function as SDR.
         switch colorSpace {
         case .sRGB, .displayP3, .unknownSRGBFallback:
             return gammaExpand(value)
@@ -142,7 +154,8 @@ enum ColorScience {
     }
 
     /// Encodes a linear-light component for the selected RGB space and dynamic range.
-    /// For HDR, uses the PQ (ST.2084) EOTF to map linear light (potentially > 1.0) to [0,1].
+    /// For PQ HDR, uses the ST.2084 EOTF to map linear light (potentially > 1.0) to [0,1].
+    /// For EDR, uses the same gamma transfer function as SDR without clamping.
     static func encode(
         _ linear: Double,
         colorSpace: DisplayColorSpace = .sRGB,
@@ -151,6 +164,7 @@ enum ColorScience {
         if dynamicRangeMode == .hdr {
             return linearToPQ(linear)
         }
+        // EDR uses the same gamma transfer function as SDR.
         switch colorSpace {
         case .sRGB, .displayP3, .unknownSRGBFallback:
             return linearToSRGBComponent(linear)
